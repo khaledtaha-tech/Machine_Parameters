@@ -1,0 +1,71 @@
+.excel-import-panel {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #2a5369;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(70, 169, 255, .09), rgba(39, 211, 162, .08));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.excel-import-panel strong { display: block; font-size: 14px; }
+.excel-import-panel p { margin: 5px 0; color: #b5c7d3; font-size: 12px; }
+.excel-import-panel small { color: var(--muted); }
+.rate-decision-card {
+  margin-top: 14px;
+  padding: 15px 17px;
+  border: 1px solid rgba(255, 203, 107, .42);
+  border-radius: 13px;
+  background: rgba(255, 203, 107, .08);
+}
+.rate-decision-card strong { color: #ffdc93; }
+.rate-decision-card p { margin: 7px 0 0; color: #cbd9e2; line-height: 1.55; }
+.parameter-group { border: 1px solid #20384a; border-radius: 13px; background: #081722; overflow: hidden; }
+.parameter-group + .parameter-group { margin-top: 11px; }
+.parameter-group-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 13px; background: #10283a; border-bottom: 1px solid #20384a; }
+.parameter-group-head strong { font-size: 12px; color: #d9e9f2; }
+.parameter-group-head span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+.parameter-group .param-row { border: 0; border-bottom: 1px solid #183144; border-radius: 0; }
+.parameter-group .param-row:last-child { border-bottom: 0; }
+.param-row.has-difference { grid-template-columns: 1.25fr .45fr 1fr 1fr .8fr 40px; }
+.param-row.info-row { grid-template-columns: 1.25fr .45fr 2fr 40px; }
+.param-row.calculated-row { background: rgba(231, 230, 230, .06); }
+.param-row input[readonly] { background: #10202d; color: #aebfca; border-style: dashed; }
+.difference-chip { display: inline-flex; justify-content: center; align-items: center; min-height: 34px; padding: 6px 8px; border-radius: 8px; background: #173147; color: #9fc8e4; font-size: 10px; font-weight: 800; text-align: center; }
+.difference-chip.changed { background: rgba(255, 203, 107, .12); color: #ffda91; }
+.difference-chip.added { background: rgba(39, 211, 162, .12); color: #73e4c0; }
+.difference-chip.removed { background: rgba(255, 107, 107, .11); color: #ff9e9e; }
+.difference-chip.same { background: #12293a; color: #91a9b9; }
+.import-dialog { width: min(1080px, 94vw); }
+.import-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; }
+.import-summary-card { padding: 12px; border: 1px solid #24465b; background: #081722; border-radius: 11px; }
+.import-summary-card span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 6px; }
+.import-summary-card strong { font-size: 13px; }
+.import-preview { max-height: 44vh; overflow: auto; border: 1px solid #24465b; border-radius: 12px; }
+.import-preview-group h4 { position: sticky; top: 0; z-index: 1; margin: 0; padding: 10px 12px; background: #102b3e; color: #dceaf2; font-size: 12px; }
+.import-preview-row { display: grid; grid-template-columns: 1.4fr .75fr .75fr .65fr; gap: 8px; padding: 9px 12px; border-top: 1px solid #1c3648; align-items: center; font-size: 11px; }
+.import-preview-row span:nth-child(n+2) { text-align: center; color: #b8ccd8; }
+.rate-choice-panel { margin: 0 0 15px; padding: 15px; border: 1px solid rgba(255, 203, 107, .38); border-radius: 13px; background: rgba(255, 203, 107, .07); }
+.rate-choice-panel h4 { margin: 0 0 6px; color: #ffda91; }
+.rate-choice-panel p { margin: 0 0 12px; color: #bdccd6; font-size: 12px; }
+.rate-choice-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+.rate-choice-option { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #2c4a5e; border-radius: 10px; background: #0a1925; cursor: pointer; }
+.rate-choice-option input { width: auto; }
+.rate-choice-option strong { display: block; }
+.rate-choice-option small { display: block; color: var(--muted); margin-top: 3px; }
+.import-warning { padding: 10px 12px; border-radius: 9px; background: rgba(255, 203, 107, .09); color: #ffdc95; font-size: 11px; margin-bottom: 12px; }
+.detail-table .diff-cell { font-weight: 800; color: #ffda91; }
+.rate-detail { margin-top: 14px; padding: 14px; border: 1px solid rgba(39, 211, 162, .28); background: rgba(39, 211, 162, .07); border-radius: 11px; }
+.rate-detail strong { color: #7be7c4; }
+.rate-detail p { margin: 6px 0 0; color: #bed0db; }
+@media (max-width: 760px) {
+  .excel-import-panel { display: grid; }
+  .import-summary { grid-template-columns: repeat(2, 1fr); }
+  .import-preview-row { grid-template-columns: 1.2fr .7fr .7fr; }
+  .import-preview-row span:last-child { display: none; }
+  .rate-choice-grid { grid-template-columns: 1fr; }
+  .param-row.has-difference, .param-row.info-row { grid-template-columns: 1fr 90px; }
+  .difference-chip { grid-column: 1 / -1; }
+  .import-dialog { padding: 16px; }
+}
