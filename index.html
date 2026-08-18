@@ -1,236 +1,255 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b1623" />
-  <title>Process Conditions & Trial Manager</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
-  <script src="vendor/xlsx.full.min.js" defer onerror="this.onerror=null;this.src='https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'"></script>
-  <script src="app.js?v=2.10" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corporate Blue - Advanced PDF & Material Audit Suite (V5)</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body data-theme="dark">
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">PC</div>
-        <div><h1>Process Control</h1><p>Pipes & Fittings</p></div>
-      </div>
-
-      <nav class="nav">
-        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-        <button class="nav-btn" data-view="new-record">New Record</button>
-        <button class="nav-btn" data-view="records">Records</button>
-        <button class="nav-btn" data-view="materials">Trial Materials</button>
-        <button class="nav-btn" data-view="settings">Parameter Library</button>
-      </nav>
-
-      <div class="side-card"><span class="status-dot"></span><div><strong>Local Mode</strong><small>Data saved in this browser</small></div></div>
-    </aside>
-
-    <main class="main">
-      <header class="topbar">
-        <div><p class="eyebrow">PLASTIC FACTORY SYSTEM V2.1</p><h2 id="pageTitle">Dashboard</h2></div>
-        <div class="topbar-actions">
-          <button class="theme-btn" id="themeToggle" type="button" aria-label="Switch color theme">☀ Light</button>
-          <button class="primary-btn" id="quickNewBtn" type="button">+ New Record</button>
-        </div>
-      </header>
-
-      <section id="dashboardView" class="view active">
-        <div class="hero-panel">
-          <div>
-            <span class="chip">Production Intelligence</span>
-            <h3>One engineering workspace for operating conditions and controlled trials.</h3>
-            <p>Import pipe and fitting records from Excel, compare trial conditions, calculate pipe production rates and issue professional PDF reports.</p>
-          </div>
-          <div class="hero-graphic"><div class="ring ring-1"></div><div class="ring ring-2"></div><div class="core">⌀</div></div>
-        </div>
-
-        <div class="stats-grid">
-          <article class="stat-card"><span>Total Records</span><strong id="statTotal">0</strong><small>All operating and trial records</small></article>
-          <article class="stat-card"><span>Pipe Records</span><strong id="statPipe">0</strong><small>Extrusion and pipe lines</small></article>
-          <article class="stat-card"><span>Fitting Records</span><strong id="statFitting">0</strong><small>Injection and fitting machines</small></article>
-          <article class="stat-card"><span>Trial Records</span><strong id="statTrials">0</strong><small>Controlled trials</small></article>
-        </div>
-
-        <div class="content-grid">
-          <article class="panel">
-            <div class="panel-head"><div><span class="eyebrow">RECENT ACTIVITY</span><h3>Latest Records</h3></div><button class="text-btn" data-go="records">View all</button></div>
-            <div id="recentRecords" class="recent-list"></div>
-          </article>
-          <article class="panel">
-            <div class="panel-head"><div><span class="eyebrow">SYSTEM COVERAGE</span><h3>Department Distribution</h3></div></div>
-            <div class="department-bars">
-              <div><label>Pipe</label><div class="bar"><span id="pipeBar"></span></div><b id="pipePercent">0%</b></div>
-              <div><label>Fittings</label><div class="bar"><span id="fittingBar"></span></div><b id="fittingPercent">0%</b></div>
-              <div><label>Common</label><div class="bar"><span id="commonBar"></span></div><b id="commonPercent">0%</b></div>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">PC</div>
+                <div>
+                    <h2>Process Control</h2>
+                    <small>Pipes & Fittings</small>
+                </div>
             </div>
-          </article>
-        </div>
-      </section>
+            <nav class="nav-menu">
+                <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+                <button class="nav-btn" data-view="new-record">New Record</button>
+                <button class="nav-btn" data-view="records">Records Database</button>
+                <button class="nav-btn" data-view="materials">Trial Materials Audit</button>
+                <button class="nav-btn" data-view="settings">Parameter Library</button>
+            </nav>
+        </aside>
 
-      <section id="new-recordView" class="view">
-        <form id="recordForm" class="record-layout">
-          <div class="panel form-panel">
-            <div class="section-title"><div><span>01</span></div><div><h3 id="formSectionTitle">Record Classification</h3><p>Classification is selected in the New Record guide.</p></div></div>
-            <div id="recordModeSummary" class="mode-summary"></div>
-            <div class="form-grid three">
-              <label>Record Type<select id="recordType" required><option value="operating">Operating Conditions</option><option value="trial">Trial</option></select></label>
-              <label id="trialStatusWrapper">Trial Execution<select id="trialStatus"><option value="completed">Executed / Tested on Machine</option><option value="planned">Raw Materials Prepared Only (Proof of Materials)</option></select></label>
-              <label>Department<select id="department" required><option value="pipe">Pipe</option><option value="fittings">Fittings</option><option value="common">Common</option></select></label>
-              <label>Record Date<input id="recordDate" type="date" required /></label>
-              <label>Trial No.<input id="trialNo" placeholder="e.g. TR-2026-01" /></label>
-              <label>Machine / Line<input id="machine" placeholder="e.g. Line 6 or M/C 7, 350 T" /></label>
-              <label>Product<input id="product" placeholder="e.g. HDPE 110 mm or Y 110 mm" /></label>
-              <label>Formula / Product Code<input id="formulaCode" placeholder="e.g. KA-10" /></label>
-              <label>Color<input id="color" placeholder="e.g. White / Black" /></label>
-              <label>No. of Cavities<input id="cavities" type="number" min="0" placeholder="Fittings only" /></label>
-              <label>No. of Batches<input id="batches" type="number" min="0" placeholder="e.g. 1" /></label>
-              <label>Preparing Date<input id="preparingDate" type="date" /></label>
-              <label>Date of Mixing<input id="mixingDate" type="date" /></label>
-              <label>Date of Pelletizing<input id="pelletizingDate" type="date" /></label>
-              <label class="span-3">Purpose<input id="purpose" placeholder="Purpose of operating record or trial" /></label>
-            </div>
-          </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <span class="eyebrow">PLASTIC FACTORY SYSTEM V2.1</span>
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="themeToggle" class="ghost-btn">☀ Light</button>
+                    <button id="quickNewBtn" class="primary-btn">+ New Record</button>
+                </div>
+            </header>
 
-          <div class="panel form-panel">
-            <div class="section-title"><div><span>02</span></div><div><h3>Process Parameters</h3><p id="parameterHelp">Add only the parameters needed for this record.</p></div></div>
-            <div class="parameter-toolbar">
-              <select id="parameterPicker"></select>
-              <button type="button" class="secondary-btn" id="addParameterBtn">+ Add Parameter</button>
-              <button type="button" class="secondary-btn" id="loadTemplateBtn">Load Standard Template</button>
-              <button type="button" class="ghost-btn" id="addCustomBtn">Custom Parameter</button>
-              <button type="button" class="ghost-btn" id="importExcelBtn">Import Excel</button>
-            </div>
-            <div id="productionRatePanel" class="production-panel hidden"></div>
-            <div id="parameterTable" class="parameter-table"></div>
-          </div>
+            <!-- Dashboard View -->
+            <section id="dashboardView" class="view active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span>Total Records</span>
+                        <h2 id="statTotal">0</h2>
+                    </div>
+                    <div class="stat-card">
+                        <span>Pipe Department</span>
+                        <h2 id="statPipe">0</h2>
+                    </div>
+                    <div class="stat-card">
+                        <span>Fittings Department</span>
+                        <h2 id="statFitting">0</h2>
+                    </div>
+                    <div class="stat-card">
+                        <span>Trial Records</span>
+                        <h2 id="statTrials">0</h2>
+                    </div>
+                </div>
 
-          <div class="panel form-panel">
-            <div class="section-title"><div><span>03</span></div><div><h3>Observations & Conclusion</h3><p>Record practical findings, defects and recommendations.</p></div></div>
-            <div class="form-grid two">
-              <label>Observations<textarea id="observations" rows="5" placeholder="Visible marks, dimensional behavior, refill stability, surface condition..."></textarea></label>
-              <label>Conclusion / Recommendation<textarea id="conclusion" rows="5" placeholder="Recommended, rejected, acceptable with adjustment..."></textarea></label>
-            </div>
-            <div class="form-actions"><button type="button" class="ghost-btn" id="clearFormBtn">Clear</button><button type="submit" class="primary-btn" id="saveRecordSubmitBtn">Save Record</button></div>
-          </div>
-        </form>
-      </section>
+                <div class="panel">
+                    <h3>Department Distribution</h3>
+                    <div class="progress-container">
+                        <div class="progress-label"><span>Pipe</span><strong id="pipePercent">0%</strong></div>
+                        <div class="progress-track"><div id="pipeBar" class="progress-fill"></div></div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-label"><span>Fittings</span><strong id="fittingPercent">0%</strong></div>
+                        <div class="progress-track"><div id="fittingBar" class="progress-fill"></div></div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-label"><span>Common</span><strong id="commonPercent">0%</strong></div>
+                        <div class="progress-track"><div id="commonBar" class="progress-fill"></div></div>
+                    </div>
+                </div>
 
-      <section id="recordsView" class="view">
-    <div class="panel">
-        <div class="records-toolbar">
-            <div><span class="eyebrow">DATABASE</span><h3>Operating & Trial Records</h3></div>
-            
-            <!-- حط الكود الجديد هنا مكان الـ toolbar-actions القديمة -->
-            <div class="toolbar-actions">
-                <input id="searchInput" type="search" placeholder="Search machine, product, code..." />
-                <select id="filterDepartment"><option value="all">All Departments</option><option value="pipe">Pipe</option><option value="fittings">Fittings</option><option value="common">Common</option></select>
-                <select id="filterType"><option value="all">All Types</option><option value="operating">Operating</option><option value="trial">Trial (All)</option><option value="trial-completed">Trial (Executed)</option><option value="trial-planned">Trial (Prepared Only)</option></select>
-                <button class="primary-btn" id="exportBtn">Save / Export JSON</button>
-                <button class="secondary-btn" id="importJsonBtn">Import JSON</button>
-                <input id="jsonFileInput" type="file" accept=".json" class="hidden" />
-            </div>
+                <div class="panel">
+                    <h3>Recent Activity</h3>
+                    <div id="recentRecords" class="recent-list"></div>
+                </div>
+            </section>
 
-        </div>
-        <div id="recordsTable" class="records-table"></div>
+            <!-- New Record View -->
+            <section id="new-recordView" class="view">
+                <div class="panel">
+                    <h3>Create Production / Trial Record</h3>
+                    <form id="recordForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Record Type</label>
+                                <select id="recordType">
+                                    <option value="operating">Operating Conditions</option>
+                                    <option value="trial">Trial Material / Formulation</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <select id="department">
+                                    <option value="pipe">Pipe Extrusion</option>
+                                    <option value="fittings">Fittings & Injection</option>
+                                    <option value="common">Common / General</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Date</label>
+                                <input type="date" id="recordDate" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Machine / Line</label>
+                                <input type="text" id="machine" placeholder="e.g. Line 02, Extruder A" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Product Name / Size</label>
+                                <input type="text" id="product" placeholder="e.g. HDPE 500mm SN8" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Formula / Code</label>
+                                <input type="text" id="formulaCode" placeholder="e.g. PVC-57-REV2" />
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Purpose / Objective</label>
+                            <input type="text" id="purpose" placeholder="e.g. Testing new calcium carbonate ratio" />
+                        </div>
+
+                        <div class="parameters-section">
+                            <div class="section-header">
+                                <h4>Parameters & Materials</h4>
+                                <div class="action-row">
+                                    <select id="parameterPicker"></select>
+                                    <button type="button" id="addParameterBtn" class="secondary-btn">Add Parameter</button>
+                                    <button type="button" id="addCustomBtn" class="ghost-btn">Custom Parameter</button>
+                                    <button type="button" id="loadTemplateBtn" class="ghost-btn">Load Template</button>
+                                </div>
+                            </div>
+                            <div id="parameterTable" class="parameter-table"></div>
+                        </div>
+
+                        <div class="form-grid notes-grid">
+                            <div class="form-group">
+                                <label>Observations</label>
+                                <textarea id="observations" placeholder="Process stability, melt pressure..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Conclusion & Recommendations</label>
+                                <textarea id="conclusion" placeholder="Approved for production, adjustments needed..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="primary-btn">Save Record to Database</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Records View -->
+            <section id="recordsView" class="view">
+                <div class="panel">
+                    <div class="records-toolbar">
+                        <div><span class="eyebrow">DATABASE</span><h3>Operating & Trial Records</h3></div>
+                        <div class="toolbar-actions">
+                            <input id="searchInput" type="search" placeholder="Search machine, product, code..." />
+                            <select id="filterDepartment">
+                                <option value="all">All Departments</option>
+                                <option value="pipe">Pipe</option>
+                                <option value="fittings">Fittings</option>
+                                <option value="common">Common</option>
+                            </select>
+                            <select id="filterType">
+                                <option value="all">All Types</option>
+                                <option value="operating">Operating</option>
+                                <option value="trial">Trial (All)</option>
+                            </select>
+                            <button class="primary-btn" id="exportBtn">Save / Export JSON</button>
+                            <button class="secondary-btn" id="importJsonBtn">Import JSON</button>
+                            <input id="jsonFileInput" type="file" accept=".json" class="hidden" />
+                        </div>
+                    </div>
+                    <div id="recordsTable" class="records-table"></div>
+                </div>
+            </section>
+
+            <!-- Materials View -->
+            <section id="materialsView" class="view">
+                <div class="panel">
+                    <h3>Trial Materials Audit</h3>
+                    <p>Overview of material consumption and additive formulations across trials.</p>
+                    <button id="printMaterialsBtn" class="primary-btn">Print Materials Report</button>
+                </div>
+            </section>
+
+            <!-- Parameter Library View -->
+            <section id="settingsView" class="view">
+                <div class="panel">
+                    <h3>Parameter Library Management</h3>
+                    <form id="parameterLibraryForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Parameter Name</label>
+                                <input type="text" id="libraryName" placeholder="e.g. Melt Temperature" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Default Unit</label>
+                                <input type="text" id="libraryUnit" placeholder="e.g. °C, bar, kg" />
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <select id="libraryDepartment">
+                                    <option value="pipe">Pipe</option>
+                                    <option value="fittings">Fittings</option>
+                                    <option value="common">Common</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="primary-btn">Add to Library</button>
+                    </form>
+                    <div id="libraryList" class="library-list"></div>
+                </div>
+            </section>
+        </main>
     </div>
-</section>
 
-      <section id="materialsView" class="view">
-        <div class="panel">
-          <div class="records-toolbar">
-            <div>
-              <span class="eyebrow">RAW MATERIALS AUDIT</span>
-              <h3>Trial Raw Materials Consumption</h3>
-            </div>
-            <div class="toolbar-actions">
-              <input id="materialSearchInput" type="search" placeholder="Filter material, product, trial no..." />
-              <button class="ghost-btn" id="printMaterialsBtn">Print PDF</button>
-              <!-- زر تصدير الخامات فقط المطلوب -->
-              <button class="secondary-btn" id="btnExportMaterialsOnly">Export Materials Only (PDF)</button>
-            </div>
-          </div>
-
-          <div class="stats-grid">
-            <article class="stat-card"><span>Total Trial Batches</span><strong id="statTrialBatches">0</strong><small>Executed & Planned</small></article>
-            <article class="stat-card"><span>Total Materials</span><strong id="statTotalMaterialKg">0 kg</strong><small>Raw materials used</small></article>
-            <article class="stat-card"><span>PVC Resin</span><strong id="statTotalPvcKg">0 kg</strong><small>Total PVC consumed</small></article>
-            <article class="stat-card"><span>CaCO3 Filler</span><strong id="statTotalCaco3Kg">0 kg</strong><small>Total CaCO3 consumed</small></article>
-          </div>
-
-          <div class="panel" style="margin-top:16px;">
-            <div class="panel-head"><div><span class="eyebrow">SUMMARY</span><h3>Consolidated Material Totals</h3></div></div>
-            <div id="materialsSummaryTable" class="records-table"></div>
-          </div>
-
-          <div class="panel" style="margin-top:16px;">
-            <div class="panel-head"><div><span class="eyebrow">LOG</span><h3>Detailed Consumption Records</h3></div></div>
-            <div id="materialsDetailedTable" class="records-table"></div>
-          </div>
+    <!-- Record Detail Dialog / Modal -->
+    <dialog id="recordDialog">
+        <div class="dialog-head">
+            <div><span class="eyebrow">RECORD DETAILS</span><h3 id="dialogTitle"></h3></div>
+            <button id="closeDialog" type="button" aria-label="Close">×</button>
         </div>
-      </section>
-
-      <section id="settingsView" class="view">
-        <div class="panel">
-          <div class="panel-head"><div><span class="eyebrow">CONFIGURATION</span><h3>Parameter Library</h3><p>Create reusable parameters for pipe, fitting or common records.</p></div></div>
-          <form id="parameterLibraryForm" class="inline-form">
-            <input id="libraryName" placeholder="Parameter name" required />
-            <input id="libraryUnit" placeholder="Unit, e.g. °C, bar, rpm" />
-            <select id="libraryDepartment"><option value="common">Common</option><option value="pipe">Pipe</option><option value="fittings">Fittings</option></select>
-            <button class="primary-btn" type="submit">Add Parameter</button>
-          </form>
-          <div id="libraryList" class="library-list"></div>
+        <div id="dialogContent"></div>
+        <div class="form-actions">
+            <button id="btnExportPDF" class="primary-btn" type="button">Custom PDF Export</button>
+            <button id="dialogPdfBtn" class="ghost-btn" type="button">Print / PDF</button>
         </div>
-      </section>
-    </main>
-  </div>
+    </dialog>
 
-  <dialog id="newRecordWizard" class="wizard-dialog">
-    <div class="dialog-head"><div><span class="eyebrow">NEW RECORD GUIDE</span><h3 id="wizardTitle">Create a New Record</h3></div><button id="closeWizard" type="button" aria-label="Close">×</button></div>
-    <div class="wizard-progress" id="wizardProgress"></div>
-    <div id="wizardContent" class="wizard-content"></div>
-    <div class="wizard-footer"><button class="ghost-btn hidden" id="wizardBack" type="button">Back</button></div>
-  </dialog>
-
-  <dialog id="importPreviewDialog" class="preview-dialog">
-    <div class="dialog-head"><div><span class="eyebrow">EXCEL IMPORT PREVIEW</span><h3>Review Before Filling the Record</h3></div><button id="closeImportPreview" type="button" aria-label="Close">×</button></div>
-    <div id="importPreviewContent"></div>
-    <div class="form-actions preview-actions"><button class="ghost-btn" id="cancelImportBtn" type="button">Cancel</button><button class="primary-btn" id="confirmImportBtn" type="button">Use These Values</button></div>
-  </dialog>
-
-  <dialog id="recordDialog">
-    <div class="dialog-head"><div><span class="eyebrow">RECORD DETAILS</span><h3 id="dialogTitle"></h3></div><button id="closeDialog" type="button" aria-label="Close">×</button></div>
-    <div id="dialogContent"></div>
-    <div class="form-actions">
-      <!-- أزرار إضافية داخل نافذة تفاصيل السجل للتصدير مع الـ Checkboxes -->
-      <button id="btnExportPDF" class="primary-btn" type="button">Custom PDF Export</button>
-      <button id="dialogPdfBtn" class="ghost-btn" type="button">Print / PDF</button>
+    <!-- PDF Filter Modal -->
+    <div id="pdfFilterModal" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <h3>Customize PDF Report</h3>
+            <p>Select parameters to hide from the exported report:</p>
+            <div id="checkboxContainer" class="checkbox-list"></div>
+            <div class="form-actions">
+                <button id="btnConfirmExport" class="primary-btn">Generate Custom PDF</button>
+                <button id="btnCancelExport" class="ghost-btn">Cancel</button>
+            </div>
+        </div>
     </div>
-  </dialog>
 
-  <!-- نافذة التخصيص (Modal) للتحكم في إخفاء البيانات قبل التصدير لملف الـ PDF -->
-  <div id="pdfFilterModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <h3>Customize Report Data</h3>
-      <p>Select data items you want to <strong>hide</strong> from the PDF report:</p>
-      
-      <div id="checkboxContainer" class="checkbox-grid">
-        <!-- Checkboxes will be rendered dynamically via JS -->
-      </div>
-      
-      <div class="modal-actions">
-        <button id="btnConfirmExport" class="primary-btn" type="button">Export Now</button>
-        <button id="btnCancelExport" class="ghost-btn" type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <input id="excelFileInput" type="file" accept=".xlsx,.xls" hidden />
-  <div id="toast" class="toast"></div>
+    <div id="toast" class="toast"></div>
+    <script src="app.js"></script>
 </body>
 </html>
