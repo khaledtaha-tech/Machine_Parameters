@@ -207,17 +207,19 @@ function addParamRow(name, unit, isMaterial) {
         <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
     `;
     table.appendChild(row);
-}
 
 function setupRecordsView() {
     const searchInput = document.getElementById('searchInput');
     const filterDept = document.getElementById('filterDepartment');
     const filterType = document.getElementById('filterType');
+    const importJsonBtn = document.getElementById('importJsonBtn');
+    const jsonFileInput = document.getElementById('jsonFileInput');
 
     searchInput.addEventListener('input', renderRecordsList);
     filterDept.addEventListener('change', renderRecordsList);
     filterType.addEventListener('change', renderRecordsList);
 
+    // Export JSON Handler
     document.getElementById('exportBtn').addEventListener('click', () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
         const dlAnchor = document.createElement('a');
@@ -226,7 +228,38 @@ function setupRecordsView() {
         document.body.appendChild(dlAnchor);
         dlAnchor.click();
         dlAnchor.remove();
+        showToast('Backup exported successfully');
     });
+
+    // Import JSON Handlers (Fixed and Connected)
+    if (importJsonBtn && jsonFileInput) {
+        importJsonBtn.addEventListener('click', () => {
+            jsonFileInput.click();
+        });
+
+        jsonFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    if (Array.isArray(importedData)) {
+                        records = importedData;
+                        localStorage.setItem('plastic_factory_records', JSON.stringify(records));
+                        renderRecordsList();
+                        renderDashboard();
+                        showToast('Data imported and restored successfully!');
+                    } else {
+                        alert('Invalid JSON file structure.');
+                    }
+                } catch (err) {
+                    alert('Error parsing JSON backup file.');
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
 
     renderRecordsList();
 }

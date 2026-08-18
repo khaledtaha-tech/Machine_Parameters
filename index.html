@@ -122,21 +122,24 @@
       </section>
 
       <section id="recordsView" class="view">
-        <div class="panel">
-          <div class="records-toolbar">
+    <div class="panel">
+        <div class="records-toolbar">
             <div><span class="eyebrow">DATABASE</span><h3>Operating & Trial Records</h3></div>
+            
+            <!-- حط الكود الجديد هنا مكان الـ toolbar-actions القديمة -->
             <div class="toolbar-actions">
-              <input id="searchInput" type="search" placeholder="Search machine, product, code..." />
-              <select id="filterDepartment"><option value="all">All Departments</option><option value="pipe">Pipe</option><option value="fittings">Fittings</option><option value="common">Common</option></select>
-              <select id="filterType"><option value="all">All Types</option><option value="operating">Operating</option><option value="trial">Trial (All)</option><option value="trial-completed">Trial (Executed)</option><option value="trial-planned">Trial (Prepared Only)</option></select>
-              <button class="ghost-btn" id="exportBtn">Export JSON</button>
-              <button class="ghost-btn" id="importJsonBtn">Import JSON</button>
-              <input id="jsonFileInput" type="file" accept=".json" class="hidden" />
+                <input id="searchInput" type="search" placeholder="Search machine, product, code..." />
+                <select id="filterDepartment"><option value="all">All Departments</option><option value="pipe">Pipe</option><option value="fittings">Fittings</option><option value="common">Common</option></select>
+                <select id="filterType"><option value="all">All Types</option><option value="operating">Operating</option><option value="trial">Trial (All)</option><option value="trial-completed">Trial (Executed)</option><option value="trial-planned">Trial (Prepared Only)</option></select>
+                <button class="primary-btn" id="exportBtn">Save / Export JSON</button>
+                <button class="secondary-btn" id="importJsonBtn">Import JSON</button>
+                <input id="jsonFileInput" type="file" accept=".json" class="hidden" />
             </div>
-          </div>
-          <div id="recordsTable" class="records-table"></div>
+
         </div>
-      </section>
+        <div id="recordsTable" class="records-table"></div>
+    </div>
+</section>
 
       <section id="materialsView" class="view">
         <div class="panel">
