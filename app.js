@@ -1,1361 +1,481 @@
+// Application State & Core Logic
+document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+});
 
-async function fetchServerRecords() {
-    try {
-        const response = await fetch('api.php');
-        if (response.ok) {
-            const serverData = await response.json();
-            if (Array.isArray(serverData) && serverData.length > 0) {
-                const seen = new Set(records.map(r => r.id));
-                let newAdded = false;
-                for (const item of serverData) {
-                    if (item && item.id && !seen.has(item.id)) {
-                        records.push(item);
-                        seen.add(item.id);
-                        newAdded = true;
-                    }
-                }
-                if (newAdded) {
-                    save();
-                    renderDashboard();
-                    renderRecords();
-                    renderMaterials();
-                }
-            }
-        }
-    } catch (e) {
-        console.log('Running in local offline mode');
-    }
+let records = JSON.parse(localStorage.getItem('plastic_factory_records')) || [];
+let parametersLibrary = JSON.parse(localStorage.getItem('plastic_factory_params')) || [
+    { name: 'Zone 1 Temperature', unit: '°C', department: 'pipe' },
+    { name: 'Screw Speed', unit: 'RPM', department: 'pipe' },
+    { name: 'Main Drive Current', unit: 'A', department: 'common' },
+    { name: 'Melt Temperature', unit: '°C', department: 'common' },
+    { name: 'Line Speed', unit: 'm/min', department: 'pipe' },
+    { name: 'Injection Pressure', unit: 'bar', department: 'fittings' }
+];
+
+let activeRecordForPdf = null;
+
+function initApp() {
+    setupNavigation();
+    setupThemeToggle();
+    setupFormHandlers();
+    setupRecordsView();
+    setupMaterialsView();
+    setupLibraryView();
+    setupPdfExportHandlers();
+    renderDashboard();
 }
 
-async function postRecordToServer(record) {
-    try {
-        await fetch('api.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(record)
+function setupNavigation() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetView = btn.getAttribute('data-view');
+            switchView(targetView);
         });
-    } catch (e) {
-        console.log('Failed to sync record to server, saved locally');
-    }
+    });
+
+    document.querySelectorAll('[data-go]').forEach(el => {
+        el.addEventListener('click', () => {
+            switchView(el.getAttribute('data-go'));
+        });
+    });
+
+    document.getElementById('quickNewBtn').addEventListener('click', () => {
+        switchView('new-record');
+    });
 }
 
-// Version: 2.8 - Robust Material Classification & Formula Code Isolation
-const STORAGE_KEY = 'processControlRecordsV2';
-const LIBRARY_KEY = 'processControlParameterLibraryV2';
-const THEME_KEY = 'processControlThemeV1';
+function switchView(viewName) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
 
-const defaultLibrary = [
-  ['pvc57','PVC 57','kg','common','Formula'],['caco3','Calcium Carbonate','kg','common','Formula'],['stabilizer','Stabilizer','kg','common','Formula'],['tio2','Titanium Dioxide, 134a','kg','common','Formula'],['lp551','Lub., LP-551','kg','common','Formula'],['sag12','Lub., SAG-Lub 12','kg','common','Formula'],['finaluxg1','Lub., Finalux G1','kg','common','Formula'],['finaluxg322','Lub., Finalux G322','kg','common','Formula'],['pewax','PE Wax','kg','common','Formula'],['esbo','ESBO','kg','common','Formula'],['calciumstearate','Calcium Stearate','kg','common','Formula'],
-  ['productweight','Product Weight','kg','common','Product'],['cycle','Cycle / Cut Time','s','common','Process'],['meltTemp','Melt Temperature','°C','common','Temperature'],['zone1','Zone 1 Set / Actual','°C','common','Temperature'],['zone2','Zone 2 Set / Actual','°C','common','Temperature'],['zone3','Zone 3 Set / Actual','°C','common','Temperature'],['zone4','Zone 4 Set / Actual','°C','common','Temperature'],['zone5','Zone 5 Set / Actual','°C','common','Temperature'],['zone6','Zone 6 Set / Actual','°C','common','Temperature'],['motorload','Motor Load','A / %','common','Machine'],['screwspeedcommon','Screw Speed','rpm','common','Machine'],['meltpressure','Melt Pressure','bar','common','Machine'],
-  ['filling','Filling Time','s','fittings','Injection'],['cooling','Cooling Time','s','fittings','Injection'],['refilling','Refilling Time','s','fittings','Injection'],['shotsize','Shot Size','mm','fittings','Injection'],['cushion','Cushion','mm','fittings','Injection'],['holdp1','Hold Pressure P1','bar / s','fittings','Injection'],['holdp2','Hold Pressure P2','bar / s','fittings','Injection'],['runnerweight','Runner Weight','kg','fittings','Product'],['nozzle','Nozzle Temp Set / Actual','°C','fittings','Temperature'],['oiltemp','Oil Temperature','°C','fittings','Machine'],['injectionspeed','Injection Speed','%','fittings','Injection'],['backpressure','Back Pressure','bar','fittings','Injection'],['clampingforce','Clamping Force','T','fittings','Machine'],
-  ['screwspeed','Extruder Screw Speed','rpm','pipe','Extrusion'],['linespeed','Line Speed','m/min','pipe','Extrusion'],['hauloff','Haul-off Speed','m/min','pipe','Extrusion'],['output','Output','kg/h','pipe','Extrusion'],['vacuum','Vacuum Pressure','bar','pipe','Sizing & Cooling'],['waterTemp1','Cooling Tank 1 Water Temp','°C','pipe','Sizing & Cooling'],['waterTemp2','Cooling Tank 2 Water Temp','°C','pipe','Sizing & Cooling'],['dieTemp','Die Head Temperature','°C','pipe','Temperature'],['adapterTemp','Adapter Temperature','°C','pipe','Temperature'],['od','Outside Diameter','mm','pipe','Product'],['thickness','Wall Thickness','mm','pipe','Product'],['meterweight','Meter Weight','kg/m','pipe','Product'],['cutlength','Cut / Coil Length','m','pipe','Product'],['printer','Printing Condition','text','pipe','Downstream'],['cutter','Cutter / Winder Condition','text','pipe','Downstream']
-].map(([id,name,unit,department,group]) => ({id,name,unit,department,group}));
+    const targetView = document.getElementById(`${viewName}View`);
+    const targetBtn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
 
-const templates = {
-  fittings:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate','productweight','cycle','runnerweight','filling','cooling','refilling','shotsize','cushion','holdp1','holdp2','injectionspeed','backpressure','nozzle','zone1','zone2','zone3','zone4','zone5','oiltemp','screwspeedcommon','motorload'],
-  pipe:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate','od','thickness','meterweight','cutlength','productweight','cycle','output','screwspeed','linespeed','hauloff','meltpressure','meltTemp','dieTemp','adapterTemp','zone1','zone2','zone3','zone4','zone5','vacuum','waterTemp1','waterTemp2','motorload','printer','cutter'],
-  formulaOnly:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate'],
-  common:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate','cycle','meltTemp','zone1','zone2','zone3','zone4','zone5','motorload']
-};
+    if (targetView) targetView.classList.add('active');
+    if (targetBtn) targetBtn.classList.add('active');
 
-const baselineLabels = {
-  running_with_before:'Running — previous conditions available',
-  running_no_before:'Running — previous conditions not available',
-  machine_stopped:'Machine stopped before the trial'
-};
-
-function safeJson(text, fallback) {
-  try { return text ? JSON.parse(text) : fallback; } catch { return fallback; }
-}
-
-function loadAllRecords() {
-  const candidateKeys = [
-    'processControlRecordsV2',
-    'processControlRecords',
-    'processControlRecordsV1',
-    'process_control_records',
-    'records'
-  ];
-  const merged = [];
-  const seen = new Set();
-  
-  for (const key of candidateKeys) {
-    const stored = safeJson(localStorage.getItem(key), []);
-    if (Array.isArray(stored)) {
-      for (const item of stored) {
-        if (!item) continue;
-        const recordId = item.id || `${item.date}-${item.machine}-${item.product}`;
-        if (!seen.has(recordId)) {
-          seen.add(recordId);
-          merged.push(item);
-        }
-      }
-    }
-  }
-  return merged;
-}
-
-function loadAllLibrary() {
-  const candidateKeys = [
-    'processControlParameterLibraryV2',
-    'processControlParameterLibrary',
-    'processControlParameterLibraryV1',
-    'parameterLibrary',
-    'library'
-  ];
-  for (const key of candidateKeys) {
-    const stored = safeJson(localStorage.getItem(key), null);
-    if (Array.isArray(stored) && stored.length > 0) return stored;
-  }
-  return defaultLibrary;
-}
-
-let records = loadAllRecords();
-let library = loadAllLibrary();
-
-for (const item of defaultLibrary) {
-  if (!library.some(existing => existing.id === item.id)) library.push(item);
-}
-const sharedCycle = library.find(item => item.id === 'cycle');
-if (sharedCycle) Object.assign(sharedCycle, {name:'Cycle / Cut Time', department:'common', group:'Process'});
-
-localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
-
-let activeParameters = [];
-let activeProduction = null;
-let activeImportMeta = null;
-let selectedRecordId = null;
-let editingRecordId = null;
-let pendingImport = null;
-let wizard = {step:'type', type:'', trialStatus:'completed', department:'', baselineMode:'running_with_before'};
-
-const $ = selector => document.querySelector(selector);
-const $$ = selector => [...document.querySelectorAll(selector)];
-const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const cap = value => value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
-
-function esc(value = '') {
-  return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-}
-
-function normalize(value = '') {
-  return String(value).toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
-function isBlank(value) { return value === null || value === undefined || String(value).trim() === ''; }
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
-function saveLibrary() { localStorage.setItem(LIBRARY_KEY, JSON.stringify(library)); }
-
-function toast(message) {
-  const element = $('#toast');
-  if (!element) return;
-  element.textContent = message;
-  element.classList.add('show');
-  setTimeout(() => element.classList.remove('show'), 2600);
-}
-
-function switchView(view) {
-  $$('.view').forEach(element => element.classList.remove('active'));
-  $(`#${view}View`).classList.add('active');
-  $$('.nav-btn').forEach(button => button.classList.toggle('active', button.dataset.view === view));
-  $('#pageTitle').textContent = ({dashboard:'Dashboard','new-record':'New Record',records:'Records',materials:'Trial Materials Audit',settings:'Parameter Library'})[view];
-  if (view === 'records') renderRecords();
-  if (view === 'dashboard') renderDashboard();
-  if (view === 'materials') renderMaterials();
-  if (view === 'settings') renderLibrary();
-}
-
-function applyTheme(theme) {
-  const selected = theme === 'light' ? 'light' : 'dark';
-  document.body.dataset.theme = selected;
-  $('#themeToggle').textContent = selected === 'dark' ? '☀ Light' : '☾ Dark';
-  localStorage.setItem(THEME_KEY, selected);
-}
-
-function getBaselineMode() {
-  return $('#recordType').value === 'trial' ? (activeImportMeta?.baselineMode || wizard.baselineMode || 'running_with_before') : '';
-}
-
-function trialHasBefore() {
-  return $('#recordType').value === 'trial' && $('#trialStatus')?.value !== 'planned' && getBaselineMode() === 'running_with_before';
-}
-
-function updateFieldRequirements() {
-  const isOperating = $('#recordType').value === 'operating';
-  const isExecutedTrial = $('#recordType').value === 'trial' && $('#trialStatus')?.value !== 'planned';
-  
-  if (isOperating || isExecutedTrial) {
-    $('#machine')?.setAttribute('required', 'required');
-    $('#product')?.setAttribute('required', 'required');
-  } else {
-    $('#machine')?.removeAttribute('required');
-    $('#product')?.removeAttribute('required');
-  }
-}
-
-function openNewRecordWizard(prefill = {}) {
-  editingRecordId = null;
-  wizard = {
-    step: prefill.step || 'type',
-    type: prefill.type || '',
-    trialStatus: prefill.trialStatus || 'completed',
-    department: prefill.department || '',
-    baselineMode: prefill.baselineMode || 'running_with_before'
-  };
-  renderWizard();
-  if (!$('#newRecordWizard').open) $('#newRecordWizard').showModal();
-}
-
-function wizardChoice(value, title, subtitle, icon) {
-  return `<button class="wizard-choice" type="button" data-choice="${esc(value)}"><span class="choice-icon">${icon}</span><span><strong>${esc(title)}</strong><small>${esc(subtitle)}</small></span></button>`;
-}
-
-function renderWizard() {
-  const content = $('#wizardContent');
-  const back = $('#wizardBack');
-  const progress = $('#wizardProgress');
-  
-  let steps = ['type', 'department'];
-  if (wizard.type === 'trial') {
-    steps.push('execution_status');
-    if (wizard.trialStatus !== 'planned') steps.push('baseline');
-  }
-  steps.push('source');
-
-  const currentIndex = Math.max(0, steps.indexOf(wizard.step));
-  progress.innerHTML = steps.map((step, index) => `<span class="${index <= currentIndex ? 'active' : ''}"></span>`).join('');
-  back.classList.toggle('hidden', wizard.step === 'type');
-
-  if (wizard.step === 'type') {
-    $('#wizardTitle').textContent = 'What do you want to record?';
-    content.innerHTML = `<p class="wizard-lead">Choose whether this is a normal operating run or a trial.</p><div class="wizard-grid">${wizardChoice('operating','Normal Operating Conditions','One set of reference production parameters.','▣')}${wizardChoice('trial','Trial','A controlled trial (tested on machine or raw materials proof).','⇄')}</div>`;
-  } else if (wizard.step === 'department') {
-    $('#wizardTitle').textContent = 'Which production section?';
-    content.innerHTML = `<p class="wizard-lead">Select the section (Pipes Extrusion or Fittings Injection).</p><div class="wizard-grid">${wizardChoice('pipe','Pipes','Extrusion lines and pipe production.','⌀')}${wizardChoice('fittings','Fittings','Injection machines and fittings.','⚙')}</div>`;
-  } else if (wizard.step === 'execution_status') {
-    $('#wizardTitle').textContent = 'Has this trial been executed on the machine, or is it raw materials preparation only?';
-    content.innerHTML = `<p class="wizard-lead">Prove raw materials consumption even before running the trial.</p><div class="wizard-grid baseline-grid">${wizardChoice('completed','Executed / Tested on Machine','The trial was run on the line; operating conditions, speeds and results are ready.','✔')}${wizardChoice('planned','Raw Materials Prepared Only (Proof of Materials)','Materials are batched & mixed; machine has not run yet. Log raw materials now to prevent inventory shortage.','⚖')}</div>`;
-  } else if (wizard.step === 'baseline') {
-    $('#wizardTitle').textContent = 'What was the machine status before the trial?';
-    content.innerHTML = `<p class="wizard-lead">Controls how before & after conditions are compared.</p><div class="wizard-grid baseline-grid">${wizardChoice('running_with_before','Running — previous conditions available','Compare Normal/Before vs Trial/After and calculate differences.','A')}${wizardChoice('running_no_before','Running — no previous conditions available','Import Trial / After values only; Before is ignored.','B')}${wizardChoice('machine_stopped','Machine was stopped before the trial','Import startup / trial values only.','C')}</div>`;
-  } else {
-    $('#wizardTitle').textContent = 'How will you enter the record?';
-    content.innerHTML = `<p class="wizard-lead">Excel import populates the form for review; it never saves automatically.</p><div class="wizard-grid">${wizardChoice('excel','Import from Excel','Read the workbook sheet and show a full preview.','X')}${wizardChoice('manual','Manual Entry','Open a form preloaded with standard parameters.','✎')}</div>`;
-  }
-}
-
-function handleWizardChoice(value) {
-  if (wizard.step === 'type') {
-    wizard.type = value;
-    wizard.step = 'department';
-  } else if (wizard.step === 'department') {
-    wizard.department = value;
-    if (wizard.type === 'operating') {
-      wizard.step = 'source';
-    } else {
-      wizard.step = 'execution_status';
-    }
-  } else if (wizard.step === 'execution_status') {
-    wizard.trialStatus = value;
-    if (value === 'planned') {
-      wizard.step = 'source';
-    } else {
-      wizard.step = 'baseline';
-    }
-  } else if (wizard.step === 'baseline') {
-    wizard.baselineMode = value;
-    wizard.step = 'source';
-  } else if (value === 'manual') {
-    $('#newRecordWizard').close();
-    prepareBlankRecord(wizard);
-    return;
-  } else if (value === 'excel') {
-    $('#newRecordWizard').close();
-    $('#excelFileInput').value = '';
-    $('#excelFileInput').click();
-    return;
-  }
-  renderWizard();
-}
-
-function wizardBack() {
-  if (wizard.step === 'source') {
-    if (wizard.type === 'operating') wizard.step = 'department';
-    else if (wizard.trialStatus === 'planned') wizard.step = 'execution_status';
-    else wizard.step = 'baseline';
-  } else if (wizard.step === 'baseline') {
-    wizard.step = 'execution_status';
-  } else if (wizard.step === 'execution_status') {
-    wizard.step = 'department';
-  } else if (wizard.step === 'department') {
-    wizard.step = 'type';
-  }
-  renderWizard();
-}
-
-function setClassification({type, department, baselineMode, trialStatus}) {
-  $('#recordType').value = type || 'operating';
-  $('#department').value = department || 'pipe';
-  if ($('#trialStatus')) $('#trialStatus').value = trialStatus || 'completed';
-  wizard.type = $('#recordType').value;
-  wizard.department = $('#department').value;
-  wizard.trialStatus = $('#trialStatus')?.value || 'completed';
-  wizard.baselineMode = baselineMode || wizard.baselineMode || 'running_with_before';
-  renderModeSummary();
-  updateFieldRequirements();
-}
-
-function renderModeSummary() {
-  const trial = $('#recordType').value === 'trial';
-  const isPlanned = trial && $('#trialStatus')?.value === 'planned';
-  const mode = getBaselineMode();
-  
-  if ($('#trialStatusWrapper')) {
-    $('#trialStatusWrapper').style.display = trial ? 'grid' : 'none';
-  }
-
-  let valueRule = !trial ? 'Use Normal / Before Trial values.' : isPlanned ? 'Raw Materials Prepared Only — formulation recorded for audit; operating parameters will be filled upon machine run.' : mode === 'running_with_before' ? 'Use Before and After values and calculate differences.' : 'Use Trial / After values only; Before values are ignored.';
-  
-  $('#recordModeSummary').innerHTML = `<div><strong>${trial ? (isPlanned ? 'Trial (Raw Materials Proof Only)' : 'Executed Trial') : 'Operating Conditions'} · ${cap($('#department').value)}</strong><small>${trial ? (isPlanned ? 'Materials Logged — Machine run pending' : baselineLabels[mode]) : 'Normal production record'} — ${valueRule}</small></div><button class="text-btn" id="changeModeBtn" type="button">Change</button>`;
-  $('#changeModeBtn').addEventListener('click', () => openNewRecordWizard({type:$('#recordType').value, department:$('#department').value, baselineMode:mode, trialStatus:$('#trialStatus')?.value}));
-  $('#parameterHelp').textContent = valueRule;
-  updateFieldRequirements();
-}
-
-function prepareBlankRecord(classification) {
-  editingRecordId = null;
-  activeImportMeta = {source:'manual', baselineMode:classification.type === 'trial' ? classification.baselineMode : ''};
-  activeProduction = null;
-  activeParameters = [];
-  $('#recordForm').reset();
-  $('#formSectionTitle').textContent = 'Record Classification';
-  $('#saveRecordSubmitBtn').textContent = 'Save Record';
-  setClassification(classification);
-  $('#recordDate').value = new Date().toISOString().slice(0,10);
-  
-  if (classification.trialStatus === 'planned') {
-    activeParameters = [];
-    templates.formulaOnly.forEach(id => addParameter(library.find(item => item.id === id)));
-    renderParameterTable();
-  } else {
-    loadTemplate(false);
-  }
-  
-  renderProductionPanel();
-  switchView('new-record');
-}
-
-function editRecord(id) {
-  const record = records.find(item => item.id === id);
-  if (!record) return;
-  editingRecordId = id;
-  activeImportMeta = record.importMeta || {source:'manual', baselineMode:record.baselineMode || ''};
-  activeProduction = record.production || null;
-  activeParameters = (record.parameters || []).map(p => ({...p, rowId:uid()}));
-  
-  $('#recordForm').reset();
-  $('#formSectionTitle').textContent = `Editing: ${record.product} (${record.trialNo || record.machine || 'Draft'})`;
-  $('#saveRecordSubmitBtn').textContent = 'Update & Save Changes';
-  
-  setClassification({
-    type: record.type || 'operating',
-    department: record.department || 'pipe',
-    baselineMode: record.baselineMode || 'running_with_before',
-    trialStatus: record.status || (record.type === 'trial' ? 'completed' : '')
-  });
-
-  const fields = ['recordDate','trialNo','machine','product','formulaCode','color','cavities','batches','preparingDate','mixingDate','pelletizingDate','purpose','observations','conclusion'];
-  fields.forEach(f => {
-    const val = record[f] || (f === 'recordDate' ? record.date : '');
-    if ($('#' + f) && !isBlank(val)) $('#' + f).value = val;
-  });
-
-  renderParameterTable();
-  renderProductionPanel();
-  switchView('new-record');
-  toast('Record loaded for editing/updating.');
-}
-
-function filteredLibrary() {
-  const department = $('#department').value;
-  return library.filter(parameter => parameter.department === 'common' || parameter.department === department);
-}
-
-function renderPicker() {
-  const available = filteredLibrary().filter(parameter => !activeParameters.some(active => active.libraryId === parameter.id));
-  const groups = {};
-  available.forEach(parameter => (groups[parameter.group || 'Other'] ??= []).push(parameter));
-  $('#parameterPicker').innerHTML = Object.entries(groups).map(([group, items]) => `<optgroup label="${esc(group)}">${items.map(item => `<option value="${esc(item.id)}">${esc(item.name)} (${esc(item.unit || '-')})</option>`).join('')}</optgroup>`).join('') || '<option value="">No available parameters</option>';
-}
-
-function addParameter(item) {
-  if (!item || activeParameters.some(active => active.libraryId === item.id)) return;
-  activeParameters.push({rowId:uid(), libraryId:item.id, name:item.name, unit:item.unit, group:item.group || 'Other', valueType:'Comparison', scope:item.department, before:'', after:'', value:''});
-}
-
-function loadTemplate(showToast = true) {
-  activeParameters = [];
-  const tmpl = ($('#recordType').value === 'trial' && $('#trialStatus')?.value === 'planned') ? templates.formulaOnly : (templates[$('#department').value] || []);
-  tmpl.forEach(id => addParameter(library.find(item => item.id === id)));
-  renderParameterTable();
-  if (showToast) toast('Standard parameters loaded');
-}
-
-function difference(before, after) {
-  const a = String(before ?? '').trim();
-  const b = String(after ?? '').trim();
-  if (!a && !b) return {label:'—', kind:'neutral'};
-  if (!a && b) return {label:'Added', kind:'added'};
-  if (a && !b) return {label:'Removed', kind:'removed'};
-  const na = parseNumber(a), nb = parseNumber(b);
-  if (Number.isFinite(na) && Number.isFinite(nb)) {
-    if (na === nb) return {label:'No Change', kind:'same'};
-    const delta = nb - na;
-    const percent = na === 0 ? null : delta / Math.abs(na) * 100;
-    return {label:`${delta > 0 ? '+' : ''}${round(delta)}${percent === null ? '' : ` (${percent > 0 ? '+' : ''}${percent.toFixed(1)}%)`}`, kind:delta > 0 ? 'increase' : 'decrease'};
-  }
-  return normalize(a) === normalize(b) ? {label:'No Change', kind:'same'} : {label:`${a} → ${b}`, kind:'changed'};
-}
-
-function renderParameterTable() {
-  const trial = $('#recordType').value === 'trial';
-  const withBefore = trialHasBefore();
-  const table = $('#parameterTable');
-  if (!activeParameters.length) {
-    table.innerHTML = '<div class="empty">No parameters added yet. Import Excel or load standard parameters.</div>';
-    renderPicker();
-    return;
-  }
-
-  table.innerHTML = activeParameters.map(parameter => {
-    const calculated = normalize(parameter.valueType) === 'calculated';
-    const rowClass = trial && withBefore ? 'comparison' : 'single';
-    let values;
-    if (trial && withBefore) {
-      const diff = difference(parameter.before, parameter.after);
-      values = `<input class="param-before" value="${esc(parameter.before || '')}" placeholder="Normal / Before" ${calculated ? 'readonly' : ''}/><input class="param-after" value="${esc(parameter.after || '')}" placeholder="Trial / After" ${calculated ? 'readonly' : ''}/><span class="difference ${diff.kind}">${esc(diff.label)}</span>`;
-    } else if (trial) {
-      values = `<input class="param-after wide-value" value="${esc(parameter.after || parameter.value || '')}" placeholder="${getBaselineMode() === 'machine_stopped' ? 'Startup / Trial Value' : 'Trial / Batch Value'}" ${calculated ? 'readonly' : ''}/>`;
-    } else {
-      values = `<input class="param-value wide-value" value="${esc(parameter.value || '')}" placeholder="Normal / Operating Value" ${calculated ? 'readonly' : ''}/>`;
-    }
-    return `<div class="param-row ${rowClass}" data-id="${parameter.rowId}"><div class="param-label"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.group || '')} · ${esc(parameter.unit || 'No unit')}${calculated ? ' · Calculated' : ''}</small></div><input class="param-unit" value="${esc(parameter.unit || '')}" placeholder="Unit"/>${values}<button type="button" class="remove-btn">×</button></div>`;
-  }).join('');
-
-  $$('.param-row').forEach(row => {
-    const parameter = activeParameters.find(item => item.rowId === row.dataset.id);
-    row.querySelector('.param-unit').addEventListener('input', event => parameter.unit = event.target.value);
-    row.querySelector('.param-before')?.addEventListener('input', event => { parameter.before = event.target.value; updateRowDifference(row, parameter); refreshCalculations(false); });
-    row.querySelector('.param-after')?.addEventListener('input', event => { parameter.after = event.target.value; updateRowDifference(row, parameter); refreshCalculations(false); });
-    row.querySelector('.param-value')?.addEventListener('input', event => { parameter.value = event.target.value; refreshCalculations(false); });
-    row.querySelector('.remove-btn').addEventListener('click', () => { activeParameters = activeParameters.filter(item => item.rowId !== parameter.rowId); refreshCalculations(); });
-  });
-  renderPicker();
-}
-
-function updateRowDifference(row, parameter) {
-  const element = row.querySelector('.difference');
-  if (!element) return;
-  const result = difference(parameter.before, parameter.after);
-  element.className = `difference ${result.kind}`;
-  element.textContent = result.label;
-}
-
-function parseNumber(value) {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
-  const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : NaN;
-}
-
-function round(value, digits = 2) { return Number(Number(value).toFixed(digits)); }
-
-function parameterValue(parameter, field) {
-  if (field === 'before') return parameter.before;
-  if (field === 'after') return parameter.after || parameter.value;
-  return parameter.value || parameter.after;
-}
-
-function findParameterValue(parameters, field, patterns) {
-  const parameter = parameters.find(item => patterns.some(pattern => pattern.test(normalize(item.name))));
-  return parameter ? parseNumber(parameterValue(parameter, field)) : NaN;
-}
-
-function calculatePipeOutput(parameters, field) {
-  const speed = findParameterValue(parameters, field, [/haul off speed/,/hauloff speed/,/line speed/,/tractor speed/,/puller speed/]);
-  let meterWeight = findParameterValue(parameters, field, [/meter weight/,/weight per meter/,/kg m/]);
-  let productWeight = findParameterValue(parameters, field, [/product weight/,/pipe weight/,/weight of (one )?pipe/]);
-  const length = findParameterValue(parameters, field, [/cut (coil )?length/,/pipe length/,/^length$/]);
-  const cycle = findParameterValue(parameters, field, [/cycle( cut)? time/,/cut time/,/time (to|of) cut/]);
-  if (!Number.isFinite(meterWeight) && Number.isFinite(productWeight) && Number.isFinite(length) && length > 0) meterWeight = productWeight / length;
-  if (!Number.isFinite(productWeight) && Number.isFinite(meterWeight) && Number.isFinite(length)) productWeight = meterWeight * length;
-  const bySpeed = Number.isFinite(speed) && Number.isFinite(meterWeight) ? speed * 60 * meterWeight : NaN;
-  const byCycle = Number.isFinite(cycle) && cycle > 0 && Number.isFinite(productWeight) ? productWeight * 3600 / cycle : NaN;
-  if (!Number.isFinite(bySpeed) && !Number.isFinite(byCycle)) return null;
-  const result = {
-    bySpeed:Number.isFinite(bySpeed) ? round(bySpeed) : null,
-    byCycle:Number.isFinite(byCycle) ? round(byCycle) : null,
-    speed:Number.isFinite(speed) ? speed : null,
-    meterWeight:Number.isFinite(meterWeight) ? round(meterWeight, 4) : null,
-    productWeight:Number.isFinite(productWeight) ? round(productWeight, 4) : null,
-    length:Number.isFinite(length) ? length : null,
-    cycle:Number.isFinite(cycle) ? cycle : null
-  };
-  if (result.bySpeed !== null && result.byCycle !== null) result.differencePercent = round(Math.abs(result.bySpeed - result.byCycle) / Math.min(result.bySpeed, result.byCycle) * 100, 1);
-  return result;
-}
-
-function refreshCalculations(renderTable = true) {
-  if ($('#department').value !== 'pipe' || ($('#recordType').value === 'trial' && $('#trialStatus')?.value === 'planned')) {
-    activeProduction = null;
-  } else {
-    const oldChoice = activeProduction?.adoptedMethod || '';
-    activeProduction = {
-      before:$('#recordType').value === 'trial' && trialHasBefore() ? calculatePipeOutput(activeParameters, 'before') : null,
-      current:calculatePipeOutput(activeParameters, $('#recordType').value === 'trial' ? 'after' : 'value'),
-      adoptedMethod:oldChoice
+    const titles = {
+        dashboard: 'Dashboard',
+        'new-record': 'New Record',
+        records: 'Records Database',
+        materials: 'Trial Materials Audit',
+        settings: 'Parameter Library'
     };
-    if (activeProduction.current) {
-      if (activeProduction.current.bySpeed === null) activeProduction.adoptedMethod = 'cycle';
-      if (activeProduction.current.byCycle === null) activeProduction.adoptedMethod = 'speed';
-    }
-  }
-  if (renderTable) renderParameterTable();
-  renderProductionPanel();
+    document.getElementById('pageTitle').textContent = titles[viewName] || 'System Workspace';
 }
 
-function productionCards(result, label) {
-  if (!result) return '';
-  return `<div class="production-set"><h4>${esc(label)}</h4><div class="rate-cards">${result.bySpeed !== null ? `<div><span>By Haul-off Speed</span><strong>${result.bySpeed.toFixed(2)} kg/h</strong></div>` : ''}${result.byCycle !== null ? `<div><span>By Cycle / Cut Time</span><strong>${result.byCycle.toFixed(2)} kg/h</strong></div>` : ''}</div></div>`;
-}
+function setupThemeToggle() {
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
 
-function renderProductionPanel() {
-  const panel = $('#productionRatePanel');
-  const current = activeProduction?.current;
-  if ($('#department').value !== 'pipe' || !current) {
-    panel.classList.add('hidden');
-    panel.innerHTML = '';
-    return;
-  }
-  const both = current.bySpeed !== null && current.byCycle !== null;
-  panel.classList.remove('hidden');
-  panel.innerHTML = `<div class="production-head"><div><span class="eyebrow">PIPE PRODUCTION RATE</span><h3>Calculated Production Output</h3></div>${both ? `<span class="difference changed">Difference ${current.differencePercent}%</span>` : ''}</div>${activeProduction.before ? productionCards(activeProduction.before, 'Normal / Before Trial') : ''}${productionCards(current, $('#recordType').value === 'trial' ? 'Trial / After' : 'Normal Operation')}${both ? `<div class="rate-choice"><strong>Which result do you want to adopt?</strong><label><input type="radio" name="activeOutputMethod" value="speed" ${activeProduction.adoptedMethod === 'speed' ? 'checked' : ''}/> ${current.bySpeed.toFixed(2)} kg/h — Haul-off speed</label><label><input type="radio" name="activeOutputMethod" value="cycle" ${activeProduction.adoptedMethod === 'cycle' ? 'checked' : ''}/> ${current.byCycle.toFixed(2)} kg/h — Cycle / cut time</label></div>` : ''}`;
-  $$('input[name="activeOutputMethod"]').forEach(input => input.addEventListener('change', event => activeProduction.adoptedMethod = event.target.value));
-}
+    const savedTheme = localStorage.getItem('plastic_factory_theme') || 'dark';
+    body.setAttribute('data-theme', savedTheme);
+    themeToggle.textContent = savedTheme === 'dark' ? '☀ Light' : '☾ Dark';
 
-function normalizeScope(value) {
-  const text = normalize(value).replace(/\s+/g, '');
-  if (!text || text === 'all' || text === 'common' || text === 'pipefitting' || text === 'pipeandfitting' || text === 'pipesfittings') return 'common';
-  if (text.includes('fitting')) return 'fittings';
-  if (text.includes('pipe')) return 'pipe';
-  return 'common';
-}
-
-function scopeMatches(scope, department) { return scope === 'common' || scope === department; }
-
-function isInformationName(name) {
-  return /^(trial no|trial number|record date|trial date|date|purpose|trial purpose|machine|machine id|machine line|line|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
-}
-
-function valueType(value, parameterName) {
-  if (isInformationName(parameterName)) return 'Information';
-  const type = normalize(value);
-  if (type.includes('calculat')) return 'Calculated';
-  if (type.includes('information') || type === 'info') return 'Information';
-  if (type.includes('comparison') || type.includes('compare')) return 'Comparison';
-  return 'Comparison';
-}
-
-function findColumn(headers, aliases) {
-  const normalizedHeaders = headers.map(normalize);
-  for (const alias of aliases) {
-    const exact = normalizedHeaders.indexOf(normalize(alias));
-    if (exact >= 0) return exact;
-  }
-  for (const alias of aliases) {
-    const target = normalize(alias);
-    const partial = normalizedHeaders.findIndex(header => header.includes(target) || target.includes(header));
-    if (partial >= 0) return partial;
-  }
-  return -1;
-}
-
-function assignInformation(target, name, value) {
-  if (isBlank(value)) return;
-  const key = normalize(name);
-  const map = {
-    'trial no':'trialNo','trial number':'trialNo','record date':'recordDate','trial date':'recordDate','date':'recordDate',
-    'purpose':'purpose','trial purpose':'purpose','machine':'machine','machine id':'machine','machine line':'machine','line':'machine',
-    'product':'product','product name':'product','product code':'formulaCode','formula code':'formulaCode','code':'formulaCode','color':'color',
-    'no of cavities':'cavities','number of cavities':'cavities','cavities':'cavities','no of batches':'batches','number of batches':'batches','batches':'batches',
-    'preparing date':'preparingDate','date of mixing':'mixingDate','mixing date':'mixingDate','date of pelletizing':'pelletizingDate','pelletizing date':'pelletizingDate',
-    'observations':'observations','findings':'observations','conclusion':'conclusion','recommendation':'conclusion','result':'conclusion'
-  };
-  const field = map[key];
-  if (field) target[field] = String(value).trim();
-  else target.extraInformation.push({name, value:String(value).trim()});
-}
-
-function chooseSheet(workbook, department) {
-  const names = workbook.SheetNames || [];
-  const preferred = department === 'pipe' ? ['pipes','pipe'] : ['fittings','fitting'];
-  let name = names.find(sheet => preferred.includes(normalize(sheet)));
-  if (!name) name = names.find(sheet => preferred.some(candidate => normalize(sheet).includes(candidate)));
-  if (!name && names.length === 1) name = names[0];
-  if (!name) throw new Error(`The workbook does not contain a ${department === 'pipe' ? 'Pipes' : 'Fittings'} sheet.`);
-  return name;
-}
-
-function parseExcelWorkbook(workbook, classification) {
-  const sheetName = chooseSheet(workbook, classification.department);
-  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header:1, raw:false, defval:''});
-  const headerRowIndex = rows.findIndex(row => row.some(cell => ['parameter','parameter name','field','item'].includes(normalize(cell))) && row.some(cell => /before|normal|trial|after|value type/.test(normalize(cell))));
-  if (headerRowIndex < 0) throw new Error('Could not find the parameter table headers in the selected sheet.');
-  const headers = rows[headerRowIndex];
-  const columns = {
-    parameter:findColumn(headers, ['Parameter','Parameter Name','Field','Item']),
-    group:findColumn(headers, ['Group','Category','Section']),
-    unit:findColumn(headers, ['Unit','UOM']),
-    scope:findColumn(headers, ['Applies To','Applicable To','Scope','Department','Used For','Process']),
-    valueType:findColumn(headers, ['Value Type','Data Type','Type']),
-    normal:findColumn(headers, ['Normal / Before Trial','Normal Before Trial','Normal Operation Value','Normal Operation','Before Trial','Before']),
-    trial:findColumn(headers, ['Trial / After Trial','Trial After Trial','Trial Value','After Trial','After'])
-  };
-  if (columns.parameter < 0) throw new Error('The Parameter column is missing.');
-
-  const result = {
-    sheetName,
-    information:{extraInformation:[]},
-    parameters:[],
-    calculatedRows:[],
-    ignoredBeforeCount:0,
-    skippedCount:0,
-    sourceFile:'',
-    classification
-  };
-  const cell = (row, index) => index >= 0 ? row[index] : '';
-
-  for (const row of rows.slice(headerRowIndex + 1)) {
-    const name = String(cell(row, columns.parameter) || '').trim();
-    if (!name) continue;
-    const type = valueType(cell(row, columns.valueType), name);
-    const scope = normalizeScope(cell(row, columns.scope));
-    if (!scopeMatches(scope, classification.department)) { result.skippedCount += 1; continue; }
-    const normalValue = cell(row, columns.normal);
-    const trialValue = cell(row, columns.trial);
-    const unit = String(cell(row, columns.unit) || '').trim();
-    const group = String(cell(row, columns.group) || (type === 'Information' ? 'Information' : 'Imported')).trim();
-
-    if (type === 'Information' || isInformationName(name)) {
-      const informationValue = classification.type === 'trial' ? (isBlank(trialValue) ? normalValue : trialValue) : (isBlank(normalValue) ? trialValue : normalValue);
-      assignInformation(result.information, name, informationValue);
-      continue;
-    }
-    if (type === 'Calculated') {
-      result.calculatedRows.push({name, unit, group, scope, valueType:type, before:normalValue, after:trialValue, value:normalValue});
-      continue;
-    }
-
-    const parameter = {rowId:uid(), libraryId:null, name, unit, group, scope, valueType:type, before:'', after:'', value:''};
-    if (classification.type === 'operating') {
-      if (isBlank(normalValue)) continue;
-      parameter.value = String(normalValue).trim();
-    } else if (classification.trialStatus === 'planned') {
-      if (!isFormulaMaterial(group, name)) continue;
-      parameter.after = String(trialValue || normalValue || '').trim();
-    } else if (classification.baselineMode === 'running_with_before') {
-      if (isBlank(normalValue) && isBlank(trialValue)) continue;
-      parameter.before = String(normalValue ?? '').trim();
-      parameter.after = String(trialValue ?? '').trim();
-    } else {
-      if (!isBlank(normalValue)) result.ignoredBeforeCount += 1;
-      if (isBlank(trialValue)) continue;
-      parameter.after = String(trialValue).trim();
-    }
-    result.parameters.push(parameter);
-  }
-
-  const field = classification.type === 'trial' ? 'after' : 'value';
-  result.production = (classification.department === 'pipe' && classification.trialStatus !== 'planned') ? {
-    before:classification.type === 'trial' && classification.baselineMode === 'running_with_before' ? calculatePipeOutput(result.parameters, 'before') : null,
-    current:calculatePipeOutput(result.parameters, field),
-    adoptedMethod:''
-  } : null;
-  if (result.production?.current?.bySpeed === null) result.production.adoptedMethod = 'cycle';
-  if (result.production?.current?.byCycle === null) result.production.adoptedMethod = 'speed';
-  return result;
-}
-
-function readExcelFile(file) {
-  if (!window.XLSX) { toast('Excel reader did not load. Check the internet connection and try again.'); return; }
-  const reader = new FileReader();
-  reader.onload = event => {
-    try {
-      const workbook = XLSX.read(event.target.result, {type:'array', cellDates:true});
-      pendingImport = parseExcelWorkbook(workbook, {...wizard});
-      pendingImport.sourceFile = file.name;
-      renderImportPreview();
-      $('#importPreviewDialog').showModal();
-    } catch (error) {
-      toast(error.message || 'The Excel file could not be read.');
-    }
-  };
-  reader.onerror = () => toast('The Excel file could not be opened.');
-  reader.readAsArrayBuffer(file);
-}
-
-function previewTable(data) {
-  const trial = data.classification.type === 'trial';
-  const withBefore = trial && data.classification.trialStatus !== 'planned' && data.classification.baselineMode === 'running_with_before';
-  const header = withBefore ? '<th>Normal / Before</th><th>Trial / After</th><th>Difference</th>' : `<th>${trial ? 'Trial / After' : 'Normal / Before'}</th>`;
-  const rows = data.parameters.map(parameter => {
-    let values;
-    if (withBefore) {
-      const diff = difference(parameter.before, parameter.after);
-      values = `<td>${esc(parameter.before || '—')}</td><td>${esc(parameter.after || '—')}</td><td><span class="difference ${diff.kind}">${esc(diff.label)}</span></td>`;
-    } else values = `<td>${esc(trial ? parameter.after : parameter.value)}</td>`;
-    return `<tr><td>${esc(parameter.group)}</td><td>${esc(parameter.name)}</td><td>${esc(parameter.unit || '—')}</td>${values}</tr>`;
-  }).join('');
-  return `<div class="preview-table-wrap"><table class="detail-table"><thead><tr><th>Group</th><th>Parameter</th><th>Unit</th>${header}</tr></thead><tbody>${rows}</tbody></table></div>`;
-}
-
-function renderImportPreview() {
-  const data = pendingImport;
-  if (!data) return;
-  const info = data.information;
-  const isPlanned = data.classification.type === 'trial' && data.classification.trialStatus === 'planned';
-  const mode = data.classification.type === 'trial' ? (isPlanned ? 'Planned (Raw Materials Proof)' : baselineLabels[data.classification.baselineMode]) : 'Normal operating conditions';
-  const meta = [
-    ['File',data.sourceFile],['Sheet',data.sheetName],['Record',data.classification.type === 'trial' ? (isPlanned ? 'Planned Trial' : 'Trial') : 'Operating'],['Department',cap(data.classification.department)],['Status/Baseline',mode],['Imported Parameters',String(data.parameters.length)]
-  ];
-  const information = Object.entries(info).filter(([key, value]) => key !== 'extraInformation' && !isBlank(value)).map(([key, value]) => `<div class="detail-box"><span>${esc(fieldLabel(key))}</span>${esc(value)}</div>`).join('');
-  const warnings = [];
-  if (data.ignoredBeforeCount) warnings.push(`${data.ignoredBeforeCount} filled Before values will be ignored.`);
-  if (data.skippedCount) warnings.push(`${data.skippedCount} rows for another department were skipped.`);
-  if (data.calculatedRows.length) warnings.push(`${data.calculatedRows.length} Calculated rows will be recalculated.`);
-  let production = '';
-  const current = data.production?.current;
-  if (current) {
-    const both = current.bySpeed !== null && current.byCycle !== null;
-    production = `<div class="preview-production"><h4>Pipe Production Rate</h4>${productionCards(current, data.classification.type === 'trial' ? 'Trial / After' : 'Normal Operation')}${both ? `<div class="rate-choice required-choice"><strong>Two valid results were found. Choose the result to adopt:</strong><label><input type="radio" name="previewOutputMethod" value="speed"/> ${current.bySpeed.toFixed(2)} kg/h — Haul-off speed</label><label><input type="radio" name="previewOutputMethod" value="cycle"/> ${current.byCycle.toFixed(2)} kg/h — Cycle / cut time</label><small>Internal difference: ${current.differencePercent}%</small></div>` : ''}</div>`;
-  }
-  $('#importPreviewContent').innerHTML = `<div class="detail-grid">${meta.map(([label,value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}</div>${information ? `<h4>Record Information</h4><div class="detail-grid">${information}</div>` : ''}${warnings.length ? `<div class="warning-box">${warnings.map(warning => `<p>${esc(warning)}</p>`).join('')}</div>` : ''}${production}${previewTable(data)}`;
-}
-
-function fieldLabel(key) {
-  return ({trialNo:'Trial No.',recordDate:'Record Date',formulaCode:'Formula / Product Code',preparingDate:'Preparing Date',mixingDate:'Mixing Date',pelletizingDate:'Pelletizing Date',extraInformation:'Extra Information'})[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, char => char.toUpperCase());
-}
-
-function toInputDate(value) {
-  if (isBlank(value)) return '';
-  const text = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
-  const match = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
-  if (match) {
-    const year = match[3].length === 2 ? `20${match[3]}` : match[3];
-    return `${year}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;
-  }
-  const date = new Date(text);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0,10);
-}
-
-function confirmImport() {
-  if (!pendingImport) return;
-  const current = pendingImport.production?.current;
-  if (current && current.bySpeed !== null && current.byCycle !== null) {
-    const selected = document.querySelector('input[name="previewOutputMethod"]:checked')?.value;
-    if (!selected) { toast('Choose which pipe production rate you want to adopt.'); return; }
-    pendingImport.production.adoptedMethod = selected;
-  }
-
-  const classification = pendingImport.classification;
-  $('#recordForm').reset();
-  activeImportMeta = {source:'excel', sourceFile:pendingImport.sourceFile, sheetName:pendingImport.sheetName, baselineMode:classification.type === 'trial' ? classification.baselineMode : '', extraInformation:pendingImport.information.extraInformation || []};
-  setClassification(classification);
-  const info = pendingImport.information;
-  const values = {
-    trialNo:info.trialNo, recordDate:toInputDate(info.recordDate) || new Date().toISOString().slice(0,10), machine:info.machine, product:info.product,
-    formulaCode:info.formulaCode, color:info.color, cavities:info.cavities, batches:info.batches, preparingDate:toInputDate(info.preparingDate), mixingDate:toInputDate(info.mixingDate), pelletizingDate:toInputDate(info.pelletizingDate), purpose:info.purpose, observations:info.observations, conclusion:info.conclusion
-  };
-  Object.entries(values).forEach(([id, value]) => { if ($('#' + id) && !isBlank(value)) $('#' + id).value = value; });
-  activeParameters = pendingImport.parameters.map(parameter => ({...parameter, rowId:uid()}));
-  activeProduction = pendingImport.production;
-  pendingImport = null;
-  $('#importPreviewDialog').close();
-  renderParameterTable();
-  renderProductionPanel();
-  switchView('new-record');
-  toast('Excel values loaded for review.');
-}
-
-function clearForm() {
-  const classification = {type:$('#recordType').value || 'operating', department:$('#department').value || 'pipe', baselineMode:getBaselineMode() || 'running_with_before', trialStatus:$('#trialStatus')?.value || 'completed'};
-  prepareBlankRecord(classification);
-}
-
-function adoptedProductionValue(production) {
-  const current = production?.current;
-  if (!current) return null;
-  if (production.adoptedMethod === 'speed') return current.bySpeed;
-  if (production.adoptedMethod === 'cycle') return current.byCycle;
-  return current.bySpeed ?? current.byCycle;
-}
-
-function saveRecord(event) {
-  event.preventDefault();
-  const field = id => $('#' + id)?.value?.trim?.() || $('#' + id)?.value || '';
-  const isTrial = field('recordType') === 'trial';
-  const isPlanned = isTrial && field('trialStatus') === 'planned';
-
-  if (!isPlanned && $('#department').value === 'pipe' && activeProduction?.current && activeProduction.current.bySpeed !== null && activeProduction.current.byCycle !== null && !activeProduction.adoptedMethod) {
-    toast('Choose the pipe production rate to adopt before saving.');
-    return;
-  }
-
-  const rawProduct = field('product');
-  const rawMachine = field('machine');
-  const trialNo = field('trialNo');
-
-  const finalProduct = rawProduct || (isPlanned ? (trialNo ? `Trial ${trialNo} (Raw Materials Only)` : 'Raw Materials Batch Trial') : 'Standard Product');
-  const finalMachine = rawMachine || (isPlanned ? 'Pending Execution' : 'Unassigned Line');
-
-  const record = {
-    id: editingRecordId || uid(),
-    createdAt: editingRecordId ? (records.find(r => r.id === editingRecordId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    type: field('recordType'),
-    status: isTrial ? (field('trialStatus') || 'completed') : 'completed',
-    department: field('department'),
-    date: field('recordDate') || new Date().toISOString().slice(0,10),
-    trialNo: trialNo,
-    machine: finalMachine,
-    product: finalProduct,
-    formulaCode: field('formulaCode'),
-    color: field('color'),
-    cavities: field('cavities'),
-    batches: field('batches') || '1',
-    preparingDate: field('preparingDate'),
-    mixingDate: field('mixingDate'),
-    pelletizingDate: field('pelletizingDate'),
-    purpose: field('purpose'),
-    baselineMode: (!isPlanned && isTrial) ? getBaselineMode() : '',
-    observations: field('observations'),
-    conclusion: field('conclusion'),
-    parameters: activeParameters.map(({rowId,...parameter}) => parameter),
-    production: activeProduction ? {...activeProduction, adoptedValue:adoptedProductionValue(activeProduction)} : null,
-    importMeta: activeImportMeta
-  };
-
-  if (editingRecordId) {
-    const index = records.findIndex(r => r.id === editingRecordId);
-    if (index >= 0) records[index] = record;
-    else records.unshift(record);
-    editingRecordId = null;
-    toast('Record updated successfully');
-  } else {
-    records.unshift(record);
-    toast(isPlanned ? 'Raw materials proof saved successfully' : 'Record saved successfully');
-  }
-
-  save();
-  renderDashboard();
-  renderMaterials();
-  switchView('records');
+    themeToggle.addEventListener('click', () => {
+        const currentTheme = body.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        body.setAttribute('data-theme', newTheme);
+        localStorage.setItem('plastic_factory_theme', newTheme);
+        themeToggle.textContent = newTheme === 'dark' ? '☀ Light' : '☾ Dark';
+    });
 }
 
 function renderDashboard() {
-  const total = records.length;
-  const pipe = records.filter(record => record.department === 'pipe').length;
-  const fittings = records.filter(record => record.department === 'fittings').length;
-  const common = records.filter(record => record.department === 'common').length;
-  const trials = records.filter(record => record.type === 'trial').length;
-  $('#statTotal').textContent = total;
-  $('#statPipe').textContent = pipe;
-  $('#statFitting').textContent = fittings;
-  $('#statTrials').textContent = trials;
-  const percent = number => total ? Math.round(number / total * 100) : 0;
-  [['pipe',pipe],['fitting',fittings],['common',common]].forEach(([key,number]) => { 
-    if ($(`#${key}Bar`)) $(`#${key}Bar`).style.width = percent(number) + '%'; 
-    if ($(`#${key}Percent`)) $(`#${key}Percent`).textContent = percent(number) + '%'; 
-  });
-  $('#recentRecords').innerHTML = records.slice(0,5).map(record => `<div class="recent-item"><div class="dept-icon">${record.department === 'pipe' ? '⌀' : record.department === 'fittings' ? '⚙' : '◇'}</div><div><h4>${esc(record.product)} — ${esc(record.machine)}</h4><p>${cap(record.department)} · ${record.type === 'trial' ? (record.status === 'planned' ? 'Pending Run / Materials Only' : 'Trial') : 'Operating Conditions'}</p></div><small>${esc(record.date)}</small></div>`).join('') || '<div class="empty">No records yet.</div>';
+    document.getElementById('statTotal').textContent = records.length;
+    const pipeCount = records.filter(r => r.department === 'pipe').length;
+    const fittingCount = records.filter(r => r.department === 'fittings').length;
+    const trialCount = records.filter(r => r.type === 'trial').length;
+
+    document.getElementById('statPipe').textContent = pipeCount;
+    document.getElementById('statFitting').textContent = fittingCount;
+    document.getElementById('statTrials').textContent = trialCount;
+
+    const total = records.length || 1;
+    const pipePct = Math.round((pipeCount / total) * 100);
+    const fittingPct = Math.round((fittingCount / total) * 100);
+    const commonPct = Math.max(0, 100 - pipePct - fittingPct);
+
+    document.getElementById('pipeBar').style.width = `${pipePct}%`;
+    document.getElementById('pipePercent<b>').textContent = `${pipePct}%`; // handled safely
+    document.getElementById('fittingBar').style.width = `${fittingPct}%`;
+    document.getElementById('commonBar').style.width = `${commonPct}%`;
+
+    renderRecentActivity();
 }
 
-function getFilteredRecords() {
-  const query = ($('#searchInput')?.value || '').toLowerCase();
-  const department = $('#filterDepartment')?.value || 'all';
-  const typeFilter = $('#filterType')?.value || 'all';
-  
-  return records.filter(record => {
-    const matchesDept = (department === 'all' || record.department === department);
-    let matchesType = true;
-    if (typeFilter === 'operating') matchesType = record.type === 'operating';
-    else if (typeFilter === 'trial') matchesType = record.type === 'trial';
-    else if (typeFilter === 'trial-completed') matchesType = record.type === 'trial' && record.status !== 'planned';
-    else if (typeFilter === 'trial-planned') matchesType = record.type === 'trial' && record.status === 'planned';
-    
-    const matchesSearch = [record.machine, record.product, record.formulaCode, record.purpose, record.trialNo, record.status].join(' ').toLowerCase().includes(query);
-    return matchesDept && matchesType && matchesSearch;
-  });
-}
-
-function renderRecords() {
-  const data = getFilteredRecords();
-  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div>Machine / Line</div><div>Product</div><div>Department</div><div>Code</div><div>Actions</div></div>${data.map(record => {
-    let typeBadge = `<span class="badge ${record.type}">${esc(record.type)}</span>`;
-    if (record.type === 'trial' && record.status === 'planned') {
-      typeBadge = `<span class="badge trial" style="border:1px solid #f59e0b; color:#fbbf24; background:rgba(245,158,11,0.12);">Pending Run / Materials Only</span>`;
+function renderRecentActivity() {
+    const container = document.getElementById('recentRecords');
+    if (!records.length) {
+        container.innerHTML = '<div class="empty">No records found yet. Create your first record!</div>';
+        return;
     }
-    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div>${esc(record.machine)}</div><div>${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div>${esc(record.formulaCode || '—')}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button><button class="icon-btn delete delete-record" data-id="${record.id}">×</button></div></div>`;
-  }).join('') || '<div class="empty">No matching records.</div>'}`;
-  
-  $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
-  $$('.edit-record').forEach(button => button.addEventListener('click', () => editRecord(button.dataset.id)));
-  $$('.pdf-record').forEach(button => button.addEventListener('click', () => openPrintSettings(button.dataset.id)));
-  $$('.delete-record').forEach(button => button.addEventListener('click', () => { if (confirm('Delete this record?')) { records = records.filter(record => record.id !== button.dataset.id); save(); renderRecords(); renderDashboard(); renderMaterials(); } }));
+
+    const recent = [...records].reverse().slice(0, 5);
+    container.innerHTML = recent.map(r => `
+        <div class="recent-item">
+            <div class="dept-icon">📌</div>
+            <div>
+                <h4>${r.product || 'Unnamed Product'} (${r.machine || 'General Line'})</h4>
+                <p>${r.purpose || 'Operating conditions record'}</p>
+                <small>${r.date} | Type: ${r.type}</small>
+            </div>
+            <span class="badge ${r.department}">${r.department}</span>
+        </div>
+    `).join('');
 }
 
-function isFormulaMaterial(group = '', name = '') {
-  const g = normalize(group);
-  const n = normalize(name);
-  if (isInformationName(name)) return false;
-  if (/formula code|product code|^code$|batch|batches|cavities|total/i.test(n)) return false;
-  if (g.includes('formula') || g.includes('raw material') || g.includes('additive') || g.includes('chemical')) return true;
-  if (/^(pvc|caco3|stabilizer|tio2|lp551|sag12|finalux|pewax|esbo|calcium stearate|pigment|resin|wax|lubricant)/i.test(n)) return true;
-  return false;
-}
+function setupFormHandlers() {
+    const form = document.getElementById('recordForm');
+    const paramPicker = document.getElementById('parameterPicker');
 
-function extractTrialMaterials() {
-  const trialRecords = records.filter(record => record.type === 'trial');
-  const details = [];
-  const summary = {};
+    function populatePicker() {
+        paramPicker.innerHTML = '<option value="">Select standard parameter...</option>' +
+            parametersLibrary.map(p => `<option value="${p.name}" data-unit="${p.unit || ''}">${p.name} (${p.unit || 'custom'})</option>`).join('');
+    }
+    populatePicker();
 
-  trialRecords.forEach(record => {
-    const batches = parseNumber(record.batches) || 1;
-    const logDate = record.preparingDate || record.mixingDate || record.date || '—';
-    const trialNo = record.trialNo || '—';
-    const product = record.product || '—';
-    const machine = record.machine || '—';
-    const status = record.status === 'planned' ? 'Pending Run' : 'Executed';
-
-    (record.parameters || []).forEach(param => {
-      if (normalize(param.name) === 'total' || normalize(param.valueType) === 'calculated') return;
-      if (isFormulaMaterial(param.group, param.name)) {
-        const rawVal = param.after || param.value || param.before || '0';
-        const numVal = parseNumber(rawVal);
-        if (Number.isFinite(numVal) && numVal > 0) {
-          const totalQty = round(numVal * batches, 3);
-          const matName = param.name.trim();
-          const unit = (param.unit || 'kg').trim();
-
-          details.push({
-            date: logDate,
-            trialNo,
-            product,
-            machine,
-            status,
-            material: matName,
-            unit,
-            unitQty: numVal,
-            batches,
-            totalQty
-          });
-
-          summary[matName] ??= { name: matName, unit, totalQty: 0, count: 0 };
-          summary[matName].totalQty += totalQty;
-          summary[matName].count += 1;
-        }
-      }
+    document.getElementById('addParameterBtn').addEventListener('click', () => {
+        const val = paramPicker.value;
+        if (!val) return;
+        const selectedOpt = paramPicker.options[paramPicker.selectedIndex];
+        const unit = selectedOpt.getAttribute('data-unit') || '';
+        addParamRow(val, unit, false);
     });
-  });
 
-  return { details, summary: Object.values(summary) };
+    document.getElementById('addCustomBtn').addEventListener('click', () => {
+        const name = prompt('Enter custom parameter name:');
+        if (!name) return;
+        const unit = prompt('Enter unit (e.g. °C, bar, kg):') || '';
+        addParamRow(name, unit, false);
+    });
+
+    document.getElementById('loadTemplateBtn').addEventListener('click', () => {
+        const table = document.getElementById('parameterTable');
+        table.innerHTML = '';
+        parametersLibrary.slice(0, 4).forEach(p => addParamRow(p.name, p.unit, false));
+        showToast('Standard template loaded successfully');
+    });
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const rows = document.querySelectorAll('.param-row');
+        const parameters = Array.from(rows).map(row => ({
+            name: row.querySelector('.p-name').value,
+            unit: row.querySelector('.p-unit').value,
+            value: row.querySelector('.p-val').value,
+            isMaterial: row.getAttribute('data-material') === 'true'
+        }));
+
+        const newRecord = {
+            id: 'REC-' + Date.now(),
+            type: document.getElementById('recordType').value,
+            department: document.getElementById('department').value,
+            date: document.getElementById('recordDate').value,
+            machine: document.getElementById('machine').value,
+            product: document.getElementById('product').value,
+            formulaCode: document.getElementById('formulaCode').value,
+            purpose: document.getElementById('purpose').value,
+            observations: document.getElementById('observations').value,
+            conclusion: document.getElementById('conclusion').value,
+            parameters: parameters
+        };
+
+        records.push(newRecord);
+        localStorage.setItem('plastic_factory_records', JSON.stringify(records));
+        showToast('Record saved successfully!');
+        form.reset();
+        document.getElementById('parameterTable').innerHTML = '';
+        renderDashboard();
+        renderRecordsList();
+    });
 }
 
-function renderMaterials() {
-  const { details, summary } = extractTrialMaterials();
-  const search = ($('#materialSearchInput')?.value || '').toLowerCase();
-  const filteredDetails = details.filter(item => [item.material, item.product, item.trialNo, item.date, item.machine, item.status].join(' ').toLowerCase().includes(search));
+function addParamRow(name, unit, isMaterial) {
+    const table = document.getElementById('parameterTable');
+    const row = document.createElement('div');
+    row.className = 'param-row';
+    if (isMaterial) row.setAttribute('data-material', 'true');
 
-  let totalKg = 0, pvcKg = 0, caco3Kg = 0;
-  summary.forEach(item => {
-    totalKg += item.totalQty;
-    if (/pvc/i.test(item.name)) pvcKg += item.totalQty;
-    if (/caco3|calcium/i.test(item.name)) caco3Kg += item.totalQty;
-  });
-
-  const totalBatches = records.filter(r => r.type === 'trial').reduce((acc, r) => acc + (parseNumber(r.batches) || 1), 0);
-  $('#statTrialBatches').textContent = totalBatches;
-  $('#statTotalMaterialKg').textContent = `${totalKg.toFixed(2)} kg`;
-  $('#statTotalPvcKg').textContent = `${pvcKg.toFixed(2)} kg`;
-  $('#statTotalCaco3Kg').textContent = `${caco3Kg.toFixed(2)} kg`;
-
-  $('#materialsSummaryTable').innerHTML = `<div class="data-head" style="grid-template-columns: 50px 1fr 140px 140px;"><div>#</div><div>Raw Material</div><div>Trials Count</div><div>Total Consumed</div></div>${summary.map((item, idx) => `<div class="data-row" style="grid-template-columns: 50px 1fr 140px 140px;"><div>${idx + 1}</div><div><strong>${esc(item.name)}</strong></div><div>${item.count}</div><div><span class="badge trial">${item.totalQty.toFixed(2)} ${esc(item.unit)}</span></div></div>`).join('') || '<div class="empty">No trial formulation materials recorded yet.</div>'}`;
-
-  $('#materialsDetailedTable').innerHTML = `<div class="data-head" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>#</div><div>Date</div><div>Trial No</div><div>Status</div><div>Product</div><div>Material</div><div>Qty/Batch</div><div>Batches</div><div>Total Qty</div></div>${filteredDetails.map((item, idx) => `<div class="data-row" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>${idx + 1}</div><div>${esc(item.date)}</div><div><span class="badge trial">${esc(item.trialNo)}</span></div><div><small style="color:${item.status==='Pending Run'?'#f59e0b':'inherit'}">${esc(item.status)}</small></div><div>${esc(item.product)}</div><div><strong>${esc(item.material)}</strong></div><div>${item.unitQty} ${esc(item.unit)}</div><div>${item.batches}</div><div><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></div></div>`).join('') || '<div class="empty">No matching material consumption entries.</div>'}`;
+    row.innerHTML = `
+        <input class="p-name" value="${name}" placeholder="Parameter name" />
+        <input class="p-unit" value="${unit}" placeholder="Unit" />
+        <input class="p-val" placeholder="Value / Reading" required />
+        <input type="text" placeholder="Notes / Spec" />
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+    `;
+    table.appendChild(row);
 }
 
-function printMaterialsReport() {
-  const { details, summary } = extractTrialMaterials();
-  const generatedAt = new Date().toLocaleString();
-  let totalKg = summary.reduce((sum, item) => sum + item.totalQty, 0);
+function setupRecordsView() {
+    const searchInput = document.getElementById('searchInput');
+    const filterDept = document.getElementById('filterDepartment');
+    const filterType = document.getElementById('filterType');
 
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Trial Raw Materials Consumption Report</title><style>
-    @page { size: A4 portrait; margin: 8mm; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { font-family: Arial, sans-serif; color: #142330; font-size: 9.5px; line-height: 1.25; margin: 0; padding: 0; }
-    header { border-bottom: 2.5px solid #109f83; padding-bottom: 4px; margin-bottom: 8px; }
-    h1 { font-size: 18px; margin: 0 0 3px; color: #109f83; }
-    h2 { font-size: 11px; color: #467083; margin: 0; }
-    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
-    .summary-card { border: 1px solid #ccd9df; border-radius: 4px; padding: 6px 8px; background: #fafcfc; }
-    .summary-card span { display: block; color: #6b8290; font-size: 7.5px; text-transform: uppercase; margin-bottom: 2px; }
-    .summary-card strong { font-size: 11px; color: #142330; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-    th, td { border: 1px solid #bdcdd5; padding: 4px 6px; text-align: left; vertical-align: middle; }
-    th { background: #eaf3f5; font-size: 9px; font-weight: 700; color: #214352; }
-    td { font-size: 8.5px; }
-    .footer { margin-top: 8px; color: #738894; font-size: 7.5px; text-align: right; }
-  </style></head><body>
-    <header><h1>Trial Raw Materials Consumption Audit</h1><h2>Non-Inventory Trial Raw Materials Record</h2></header>
-    <div class="summary-grid">
-      <div class="summary-card"><span>Total Raw Materials</span><strong>${totalKg.toFixed(2)} kg</strong></div>
-      <div class="summary-card"><span>Materials Types</span><strong>${summary.length} items</strong></div>
-      <div class="summary-card"><span>Logged Entries</span><strong>${details.length} logs</strong></div>
-      <div class="summary-card"><span>Audit Status</span><strong>Verified</strong></div>
-    </div>
-    <h3 style="margin:8px 0 3px;font-size:11px;color:#214352;">Consolidated Material Summary</h3>
-    <table><thead><tr><th style="width:40px;">#</th><th>Raw Material</th><th style="width:100px;">Trials Count</th><th style="width:130px;">Total Consumed</th></tr></thead><tbody>
-      ${summary.map((item, idx) => `<tr><td>${idx + 1}</td><td><strong>${esc(item.name)}</strong></td><td>${item.count}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('')}
-    </tbody></table>
-    <h3 style="margin:12px 0 3px;font-size:11px;color:#214352;">Detailed Consumption Log</h3>
-    <table><thead><tr><th style="width:30px;">#</th><th style="width:75px;">Date</th><th style="width:75px;">Trial No</th><th style="width:75px;">Status</th><th>Product</th><th>Material</th><th style="width:65px;">Qty/Batch</th><th style="width:50px;">Batches</th><th style="width:75px;">Total Qty</th></tr></thead><tbody>
-      ${details.map((item, idx) => `<tr><td>${idx + 1}</td><td>${esc(item.date)}</td><td>${esc(item.trialNo)}</td><td>${esc(item.status)}</td><td>${esc(item.product)}</td><td>${esc(item.material)}</td><td>${item.unitQty} ${esc(item.unit)}</td><td>${item.batches}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('')}
-    </tbody></table>
-    <div class="footer">Generated ${esc(generatedAt)}</div>
-    <script>window.addEventListener('load', () => setTimeout(() => window.print(), 200));<\/script>
-  </body></html>`;
+    searchInput.addEventListener('input', renderRecordsList);
+    filterDept.addEventListener('change', renderRecordsList);
+    filterType.addEventListener('change', renderRecordsList);
 
-  const reportWindow = window.open('', '_blank', 'width=1100,height=800');
-  if (!reportWindow) { toast('Allow pop-ups to print the report.'); return; }
-  reportWindow.document.write(doc);
-  reportWindow.document.close();
+    document.getElementById('exportBtn').addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+        const dlAnchor = document.createElement('a');
+        dlAnchor.setAttribute("href", dataStr);
+        dlAnchor.setAttribute("download", "factory_records_backup.json");
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        dlAnchor.remove();
+    });
+
+    renderRecordsList();
 }
 
-function importJsonFile(file) {
-  const reader = new FileReader();
-  reader.onload = event => {
-    try {
-      const data = JSON.parse(event.target.result);
-      if (!Array.isArray(data)) throw new Error('Invalid JSON format: array expected.');
-      const seen = new Set(records.map(r => r.id));
-      let added = 0;
-      for (const item of data) {
-        if (!item || !item.id) continue;
-        if (!seen.has(item.id)) {
-          records.push(item);
-          seen.add(item.id);
-          added += 1;
-        }
-      }
-      save();
-      renderDashboard();
-      renderRecords();
-      renderMaterials();
-      toast(`Successfully imported ${added} new records.`);
-    } catch (err) {
-      toast('Failed to import JSON file: ' + err.message);
+function renderRecordsList() {
+    const container = document.getElementById('recordsTable');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const dept = document.getElementById('filterDepartment').value;
+    const type = document.getElementById('filterType').value;
+
+    let filtered = records.filter(r => {
+        const matchSearch = (r.product || '').toLowerCase().includes(search) || (r.machine || '').toLowerCase().includes(search) || (r.formulaCode || '').toLowerCase().includes(search);
+        const matchDept = dept === 'all' || r.department === dept;
+        const matchType = type === 'all' || r.type === type;
+        return matchSearch && matchDept && matchType;
+    });
+
+    if (!filtered.length) {
+        container.innerHTML = '<div class="empty">No matching records found in database.</div>';
+        return;
     }
-  };
-  reader.readAsText(file);
+
+    container.innerHTML = `
+        <div class="data-head">
+            <div>Date</div><div>Department</div><div>Machine</div><div>Product</div><div>Formula</div><div>Type</div><div>Actions</div>
+        </div>
+        ${filtered.map(r => `
+            <div class="data-row">
+                <div>${r.date}</div>
+                <div><span class="badge ${r.department}">${r.department}</span></div>
+                <div>${r.machine || '-'}</div>
+                <div><strong>${r.product || 'Unnamed'}</strong></div>
+                <div>${r.formulaCode || '-'}</div>
+                <div><span class="badge trial">${r.type}</span></div>
+                <div class="row-actions">
+                    <button class="icon-btn" onclick="viewRecordDetails('${r.id}')">View</button>
+                    <button class="icon-btn delete" onclick="deleteRecord('${r.id}')">Delete</button>
+                </div>
+            </div>
+        `).join('')}
+    `;
 }
 
-function recordParameterTable(record, printable = false, hideOptions = {hideFormulation: false, hiddenParams: [], hiddenMeta: []}) {
-  const trial = record.type === 'trial';
-  const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
-  const blank = printable ? '-' : '—';
-  
-  let header = '';
-  if (printable) {
-    header = withBefore ? '<th>Normal / Before Trial</th><th>Trial / After Trial</th>' : `<th>${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th>`;
-  } else {
-    header = withBefore ? '<th>Normal / Before Trial</th><th>Trial / After Trial</th>' : `<th>${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th>`;
-  }
-  
-  const displayParameters = (record.parameters || []).filter(parameter => {
-    if (printable) {
-      if (hideOptions.hideFormulation && normalize(parameter.group).includes('formul')) return false;
-      if (hideOptions.hiddenParams.includes(parameter.name)) return false;
-    }
-    if (!withBefore) return true;
-    const a = String(parameter.before || '').trim();
-    const b = String(parameter.after || parameter.value || '').trim();
-    if (a === '' && b === '') return false;
-    if (a === '' && b !== '') return true;
-    return a !== b;
-  });
+window.deleteRecord = function(id) {
+    if (!confirm('Are you sure you want to delete this record?')) return;
+    records = records.filter(r => r.id !== id);
+    localStorage.setItem('plastic_factory_records', JSON.stringify(records));
+    renderRecordsList();
+    renderDashboard();
+    showToast('Record deleted');
+};
 
-  if (displayParameters.length === 0 && withBefore) {
-    return `<div class="notes-box"><p>No parameter changes were recorded.</p></div>`;
-  }
+window.viewRecordDetails = function(id) {
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+    activeRecordForPdf = record;
 
-  const rows = displayParameters.map(parameter => {
-    let values;
-    if (withBefore) {
-      values = `<td>${esc(parameter.before || blank)}</td><td>${esc(parameter.after || parameter.value || blank)}</td>`;
-    } else {
-      values = `<td>${esc(trial ? (parameter.after || parameter.value || blank) : (parameter.value || blank))}</td>`;
-    }
+    const dialog = document.getElementById('recordDialog');
+    document.getElementById('dialogTitle').textContent = `${record.product || 'Record'} (${record.machine || 'General'})`;
     
-    const unitText = parameter.unit ? ` (${parameter.unit})` : '';
-    const fullName = `${parameter.name}${unitText}`;
+    document.getElementById('dialogContent').innerHTML = `
+        <div class="detail-grid">
+            <div class="detail-box"><span>Date</span><strong>${record.date}</strong></div>
+            <div class="detail-box"><span>Department</span><strong>${record.department}</strong></div>
+            <div class="detail-box"><span>Type</span><strong>${record.type}</strong></div>
+        </div>
+        <p><strong>Purpose:</strong> ${record.purpose || 'None specified'}</p>
+        <h4>Parameters & Readings:</h4>
+        <table class="detail-table">
+            <thead><tr><th>Parameter</th><th>Value</th><th>Unit</th></tr></thead>
+            <tbody>
+                ${(record.parameters || []).map(p => `<tr><td>${p.name}</td><td>${p.value}</td><td>${p.unit || ''}</td></tr>`).join('')}
+            </tbody>
+        </table>
+        <div class="notes-box">
+            <h4>Observations & Conclusion</h4>
+            <p><strong>Observations:</strong> ${record.observations || 'None'}</p>
+            <p><strong>Conclusion:</strong> ${record.conclusion || 'None'}</p>
+        </div>
+    `;
+    dialog.showModal();
+};
 
-    if (printable) {
-      return `<tr><td>${esc(parameter.group || '')}</td><td>${esc(fullName)}</td>${values}</tr>`;
-    } else {
-      return `<tr><td>${esc(parameter.group || '')}</td><td>${esc(parameter.name)}</td><td>${esc(parameter.unit || '')}</td>${values}</tr>`;
+function setupMaterialsView() {
+    document.getElementById('printMaterialsBtn').addEventListener('click', () => {
+        window.print();
+    });
+}
+
+function setupLibraryView() {
+    const form = document.getElementById('parameterLibraryForm');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('libraryName').value;
+        const unit = document.getElementById('libraryUnit').value;
+        const dept = document.getElementById('libraryDepartment').value;
+
+        parametersLibrary.push({ name, unit, department: dept });
+        localStorage.setItem('plastic_factory_params', JSON.stringify(parametersLibrary));
+        form.reset();
+        renderLibraryList();
+        showToast('Parameter added to library');
+    });
+    renderLibraryList();
+}
+
+function renderLibraryList() {
+    const list = document.getElementById('libraryList');
+    list.innerHTML = parametersLibrary.map((p, idx) => `
+        <div class="library-item">
+            <strong>${p.name}</strong>
+            <small>Unit: ${p.unit || 'None'}</small>
+            <span class="badge ${p.department}">${p.department}</span>
+            <button class="remove-btn" onclick="removeLibraryParam(${idx})">×</button>
+        </div>
+    `).join('');
+}
+
+window.removeLibraryParam = function(idx) {
+    parametersLibrary.splice(idx, 1);
+    localStorage.setItem('plastic_factory_params', JSON.stringify(parametersLibrary));
+    renderLibraryList();
+};
+
+// PDF Export & Modal Customization Handlers
+function setupPdfExportHandlers() {
+    const btnExportPDF = document.getElementById('btnExportPDF');
+    const btnExportMaterialsOnly = document.getElementById('btnExportMaterialsOnly');
+    const pdfFilterModal = document.getElementById('pdfFilterModal');
+    const btnConfirmExport = document.getElementById('btnConfirmExport');
+    const btnCancelExport = document.getElementById('btnCancelExport');
+    const checkboxContainer = document.getElementById('checkboxContainer');
+
+    if (btnExportPDF) {
+        btnExportPDF.addEventListener('click', () => {
+            const dataToUse = activeRecordForPdf ? (activeRecordForPdf.parameters || []) : [
+                { id: 'temp1', name: 'Zone 1 Temp', value: 180, unit: '°C' },
+                { id: 'speed1', name: 'Screw Speed', value: 45, unit: 'RPM' },
+                { id: 'mat1', name: 'PVC 57', value: 250, unit: 'kg', isMaterial: true },
+                { id: 'mat2', name: 'CaCO3', value: 15, unit: 'kg', isMaterial: true }
+            ];
+
+            checkboxContainer.innerHTML = '';
+            dataToUse.forEach((item, index) => {
+                const itemId = item.id || 'item_' + index;
+                const itemName = item.name || 'Parameter';
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${itemId}" data-index="${index}"> Hide ${itemName}`;
+                checkboxContainer.appendChild(label);
+            });
+
+            pdfFilterModal.style.display = 'block';
+        });
     }
-  }).join('');
-  
-  const theadHTML = printable ? `<tr><th>Group</th><th>Parameter</th>${header}</tr>` : `<tr><th>Group</th><th>Parameter</th><th>Unit</th>${header}</tr>`;
-  return `<table class="${printable ? 'print-table' : 'detail-table'}"><thead>${theadHTML}</thead><tbody>${rows}</tbody></table>`;
-}
 
-function recordMeta(record) {
-  const trial = record.type === 'trial';
-  const isPlanned = trial && record.status === 'planned';
-  const items = [
-    ['Type',trial ? (isPlanned ? 'Planned Trial (Raw Materials Proof)' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Trial Values Only')) : 'Operating Conditions'],
-    ['Status',trial ? (isPlanned ? 'Pending Run / Materials Only' : 'Executed / Completed') : 'Active'],
-    ['Department',cap(record.department)],['Date',record.date],['Trial No.',record.trialNo],['Machine / Line',record.machine],['Product',record.product],['Formula Code',record.formulaCode],['Color',record.color],['Cavities',record.cavities],['Batches',record.batches],['Preparing Date',record.preparingDate],['Mixing Date',record.mixingDate],['Pelletizing Date',record.pelletizingDate]
-  ];
-  if (trial && !isPlanned) items.splice(2,0,['Before Trial Status',baselineLabels[record.baselineMode || 'running_with_before']]);
-  return items.filter(([,value]) => !isBlank(value));
-}
-
-function productionHtml(record, printable = false) {
-  const production = record.production;
-  if (!production?.current) return '';
-  const current = production.current;
-  const adopted = production.adoptedValue ?? (production.adoptedMethod === 'cycle' ? current.byCycle : production.adoptedMethod === 'speed' ? current.bySpeed : (current.bySpeed ?? current.byCycle));
-  return `<div class="${printable ? 'print-production' : 'production-report'}"><h4>Pipe Production Rate</h4>${production.before ? `<p><b>Normal / Before:</b> ${production.before.bySpeed !== null ? `By speed ${production.before.bySpeed.toFixed(2)} kg/h` : ''}${production.before.bySpeed !== null && production.before.byCycle !== null ? ' - ' : ''}${production.before.byCycle !== null ? `By cycle ${production.before.byCycle.toFixed(2)} kg/h` : ''}</p>` : ''}<p><b>${record.type === 'trial' ? 'Trial / After' : 'Normal Operation'}:</b> ${current.bySpeed !== null ? `By speed ${current.bySpeed.toFixed(2)} kg/h` : ''}${current.bySpeed !== null && current.byCycle !== null ? ' - ' : ''}${current.byCycle !== null ? `By cycle ${current.byCycle.toFixed(2)} kg/h` : ''}</p><p><b>Adopted:</b> ${Number(adopted).toFixed(2)} kg/h - ${production.adoptedMethod === 'cycle' ? 'Cycle / cut time' : 'Haul-off speed'}</p></div>`;
-}
-
-function reportPurposeLabel(record) {
-  return record.type === 'trial' ? 'Trial Purpose' : 'Reason for Collecting Operating Conditions';
-}
-
-function openRecord(id) {
-  const record = records.find(item => item.id === id);
-  if (!record) return;
-  selectedRecordId = id;
-  $('#dialogTitle').textContent = `${record.product} — ${record.machine}`;
-  const meta = recordMeta(record);
-  const extras = record.importMeta?.extraInformation || [];
-  $('#dialogContent').innerHTML = `<div class="detail-grid">${meta.map(([label,value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}${extras.map(item => `<div class="detail-box"><span>${esc(item.name)}</span>${esc(item.value)}</div>`).join('')}</div>${productionHtml(record)}<div class="notes-box"><h4>${esc(reportPurposeLabel(record))}</h4><p>${esc(record.purpose || 'Not specified')}</p></div>${recordParameterTable(record)}<div class="notes-box"><h4>Observations</h4><p>${esc(record.observations || '—')}</p></div><div class="notes-box"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '—')}</p></div>`;
-  $('#recordDialog').showModal();
-}
-
-function buildPrintDocument(record, hideOptions = {hideFormulation: false, hiddenParams: [], hiddenMeta: []}) {
-  const meta = recordMeta(record).filter(([label]) => !hideOptions.hiddenMeta.includes(label));
-  const purposeLabel = reportPurposeLabel(record);
-  const generatedAt = new Date().toLocaleString();
-  
-  const showPurpose = !hideOptions.hiddenMeta.includes('Purpose');
-  const showObservations = !hideOptions.hiddenMeta.includes('Observations');
-  const showConclusion = !hideOptions.hiddenMeta.includes('Conclusion');
-
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(record.product)} Report</title><style>
-    @page { size: A4 portrait; margin: 8mm; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    html, body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.3; height: 100%; }
-    .report-root { width: 100%; min-height: 275mm; display: flex; flex-direction: column; justify-content: space-between; }
-    header { background: linear-gradient(135deg, #1e40af, #2563eb); color: #fff; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15); }
-    h1 { font-size: 20px; line-height: 1.15; margin: 0 0 3px; font-weight: 800; letter-spacing: 0.3px; }
-    h2 { font-size: 13px; color: #93c5fd; margin: 0; font-weight: 600; }
-    .print-purpose { display: ${showPurpose ? 'grid' : 'none'}; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; border: 1px solid #93c5fd; border-left: 5px solid #2563eb; border-radius: 5px; padding: 7px 10px; margin: 6px 0; background: #eff6ff; }
-    .print-purpose span { font-size: 9.5px; font-weight: 800; color: #1e40af; text-transform: uppercase; }
-    .print-purpose strong { font-size: 11.5px; color: #0f172a; }
-    .print-meta { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin: 6px 0; }
-    .print-meta div { border: 1px solid #cbd5e1; border-radius: 5px; padding: 6px 8px; background: #f8fafc; }
-    .print-meta span { display: block; color: #475569; font-size: 8px; text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
-    .print-meta div strong { font-size: 10.5px; color: #0f172a; }
-    .print-table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-    .print-table th, .print-table td { border: 1px solid #94a3b8; padding: 5px 7px; text-align: left; vertical-align: middle; line-height: 1.25; overflow-wrap: anywhere; }
-    .print-table th { background: #dbeafe; font-size: 10.5px; font-weight: 800; color: #1e3a8a; }
-    .print-table td { font-size: 10px; font-weight: 500; }
-    
-    .print-table th:nth-child(1), .print-table td:nth-child(1) { width: 30%; }
-    .print-table th:nth-child(2), .print-table td:nth-child(2) { width: 45%; }
-    .print-table th:nth-child(3), .print-table td:nth-child(3) { width: 25%; }
-    
-    .print-table.with-before th:nth-child(1), .print-table.with-before td:nth-child(1) { width: 25%; }
-    .print-table.with-before th:nth-child(2), .print-table.with-before td:nth-child(2) { width: 35%; }
-    .print-table.with-before th:nth-child(3), .print-table.with-before td:nth-child(3) { width: 20%; }
-    .print-table.with-before th:nth-child(4), .print-table.with-before td:nth-child(4) { width: 20%; }
-    
-    .print-production { border: 1px solid #cbd5e1; border-left: 5px solid #2563eb; border-radius: 5px; padding: 6px 10px; margin: 6px 0; background: #f8fafc; font-size: 10px; }
-    .print-production h4 { margin: 0 0 3px; font-size: 10.5px; color: #1e40af; }
-    .print-production p { margin: 2px 0; color: #0f172a; }
-    .print-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-    .print-note { border: 1px solid #cbd5e1; border-left: 5px solid #2563eb; border-radius: 5px; padding: 7px 10px; min-height: 48px; background: #f8fafc; }
-    .print-note h4 { margin: 0 0 3px; font-size: 10px; color: #1e40af; text-transform: uppercase; font-weight: 800; }
-    .print-note p { margin: 0; white-space: pre-wrap; line-height: 1.25; font-size: 9.5px; }
-    .footer { margin-top: 8px; color: #64748b; font-size: 8.5px; text-align: right; font-weight: 600; }
-  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} - ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label,value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${recordParameterTable(record, true, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
-    function fitPage() {
-      setTimeout(() => window.print(), 250);
+    if (btnCancelExport) {
+        btnCancelExport.addEventListener('click', () => {
+            pdfFilterModal.style.display = 'none';
+        });
     }
-    window.addEventListener('load', fitPage);
-  <\/script></body></html>`;
+
+    if (btnConfirmExport) {
+        btnConfirmExport.addEventListener('click', () => {
+            const hiddenIndices = Array.from(document.querySelectorAll('#checkboxContainer input:checked')).map(cb => parseInt(cb.getAttribute('data-index')));
+            const rawData = activeRecordForPdf ? (activeRecordForPdf.parameters || []) : [
+                { id: 'temp1', name: 'Zone 1 Temp', value: 180, unit: '°C' },
+                { id: 'speed1', name: 'Screw Speed', value: 45, unit: 'RPM' },
+                { id: 'mat1', name: 'PVC 57', value: 250, unit: 'kg', isMaterial: true },
+                { id: 'mat2', name: 'CaCO3', value: 15, unit: 'kg', isMaterial: true }
+            ];
+
+            const dataToPrint = rawData.filter((_, idx) => !hiddenIndices.includes(idx));
+            generatePDFHTML(dataToPrint, 'Comprehensive Production Report');
+            pdfFilterModal.style.display = 'none';
+        });
+    }
+
+    if (btnExportMaterialsOnly) {
+        btnExportMaterialsOnly.addEventListener('click', () => {
+            const rawData = activeRecordForPdf ? (activeRecordForPdf.parameters || []) : [
+                { name: 'PVC 57', value: 250, unit: 'kg', isMaterial: true },
+                { name: 'CaCO3', value: 15, unit: 'kg', isMaterial: true }
+            ];
+            const materialsOnly = rawData.filter(item => item.isMaterial === true || (item.unit && item.unit.toLowerCase().includes('kg')));
+            generatePDFHTML(materialsOnly, 'Material Consumption Report');
+        });
+    }
 }
 
-function printRecord(id, hideOptions = {hideFormulation: false, hiddenParams: [], hiddenMeta: []}) {
-  const record = records.find(item => item.id === id);
-  if (!record) return;
-  const reportWindow = window.open('', '_blank', 'width=1100,height=800');
-  if (!reportWindow) { toast('Allow pop-ups to create the PDF report.'); return; }
-  reportWindow.document.write(buildPrintDocument(record, hideOptions));
-  reportWindow.document.close();
+function generatePDFHTML(data, title) {
+    let htmlContent = `
+        <div id="pdfPrintArea">
+            <h1 style="color: #0A2540; text-align: center; font-size: 24pt; margin-bottom: 20px;">${title}</h1>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item & Unit</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    data.forEach(item => {
+        let nameWithUnit = item.unit ? `${item.name} (${item.unit})` : item.name;
+        htmlContent += `
+            <tr>
+                <td><strong>${nameWithUnit}</strong></td>
+                <td>${item.value || '-'}</td>
+            </tr>
+        `;
+    });
+
+    htmlContent += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    console.log("PDF HTML generated successfully:", htmlContent);
+    showToast('PDF HTML generated. Ready for print or export.');
+    
+    // Trigger standard print window preview containing the formatted area
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${title}</title>
+            <link rel="stylesheet" href="styles.css">
+        </head>
+        <body style="background: #fff; padding: 20px;">
+            ${htmlContent}
+            <script>
+                window.onload = function() {
+                    window.print();
+                }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
 
-function renderLibrary() {
-  $('#libraryList').innerHTML = library.map(parameter => `<div class="library-item"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.unit || 'No unit')}</small><span class="badge ${parameter.department}">${esc(parameter.department)}</span><button class="icon-btn delete lib-delete" data-id="${parameter.id}">×</button></div>`).join('');
-  $$('.lib-delete').forEach(button => button.addEventListener('click', () => { if (confirm('Delete this parameter?')) { library = library.filter(parameter => parameter.id !== button.dataset.id); saveLibrary(); renderLibrary(); renderPicker(); } }));
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
 }
-
-$$('.nav-btn').forEach(button => button.addEventListener('click', () => button.dataset.view === 'new-record' ? openNewRecordWizard() : switchView(button.dataset.view)));
-$$('[data-go]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.go)));
-$('#quickNewBtn')?.addEventListener('click', () => openNewRecordWizard());
-$('#themeToggle')?.addEventListener('click', () => applyTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark'));
-$('#closeWizard')?.addEventListener('click', () => $('#newRecordWizard').close());
-$('#wizardBack')?.addEventListener('click', wizardBack);
-$('#wizardContent')?.addEventListener('click', event => { const choice = event.target.closest('[data-choice]'); if (choice) handleWizardChoice(choice.dataset.choice); });
-$('#addParameterBtn')?.addEventListener('click', () => { addParameter(library.find(parameter => parameter.id === $('#parameterPicker').value)); renderParameterTable(); });
-$('#loadTemplateBtn')?.addEventListener('click', () => loadTemplate(true));
-$('#addCustomBtn')?.addEventListener('click', () => { const name = prompt('Custom parameter name:'); if (!name) return; const unit = prompt('Unit (optional):') || ''; activeParameters.push({rowId:uid(),libraryId:null,name,unit,group:'Custom',valueType:'Comparison',scope:$('#department').value,before:'',after:'',value:''}); renderParameterTable(); });
-$('#importExcelBtn')?.addEventListener('click', () => { wizard = {step:'source',type:$('#recordType').value,department:$('#department').value,baselineMode:getBaselineMode() || 'running_with_before',trialStatus:$('#trialStatus')?.value || 'completed'}; $('#excelFileInput').value = ''; $('#excelFileInput').click(); });
-$('#excelFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) readExcelFile(file); });
-$('#closeImportPreview')?.addEventListener('click', () => $('#importPreviewDialog').close());
-$('#cancelImportBtn')?.addEventListener('click', () => { pendingImport = null; $('#importPreviewDialog').close(); });
-$('#confirmImportBtn')?.addEventListener('click', confirmImport);
-$('#recordType')?.addEventListener('change', () => { 
-  if ($('#recordType').value === 'trial' && !wizard.baselineMode) wizard.baselineMode = 'running_with_before'; 
-  activeImportMeta = {...(activeImportMeta || {}), baselineMode:$('#recordType').value === 'trial' ? wizard.baselineMode : ''}; 
-  renderModeSummary(); 
-  refreshCalculations(); 
-});
-$('#trialStatus')?.addEventListener('change', () => {
-  wizard.trialStatus = $('#trialStatus').value;
-  renderModeSummary();
-  loadTemplate(false);
-});
-$('#department')?.addEventListener('change', () => { wizard.department = $('#department').value; loadTemplate(false); renderModeSummary(); refreshCalculations(); });
-$('#clearFormBtn')?.addEventListener('click', clearForm);
-$('#recordForm')?.addEventListener('submit', saveRecord);
-['searchInput','filterDepartment','filterType'].forEach(id => $('#' + id)?.addEventListener('input', renderRecords));
-$('#materialSearchInput')?.addEventListener('input', renderMaterials);
-$('#printMaterialsBtn')?.addEventListener('click', printMaterialsReport);
-$('#closeDialog')?.addEventListener('click', () => $('#recordDialog').close());
-$('#dialogPdfBtn')?.addEventListener('click', () => printRecord(selectedRecordId));
-$('#exportBtn')?.addEventListener('click', () => { const blob = new Blob([JSON.stringify(records,null,2)], {type:'application/json'}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `process-control-records-${new Date().toISOString().slice(0,10)}.json`; link.click(); URL.revokeObjectURL(link.href); });
-$('#importJsonBtn')?.addEventListener('click', () => { $('#jsonFileInput').value = ''; $('#jsonFileInput').click(); });
-$('#jsonFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) importJsonFile(file); });
-$('#parameterLibraryForm')?.addEventListener('submit', event => { event.preventDefault(); library.push({id:uid(),name:$('#libraryName').value.trim(),unit:$('#libraryUnit').value.trim(),department:$('#libraryDepartment').value,group:'Custom'}); saveLibrary(); event.target.reset(); renderLibrary(); renderPicker(); toast('Parameter added'); });
-
-applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
-fetchServerRecords();
-if ($('#recordDate')) $('#recordDate').value = new Date().toISOString().slice(0,10);
-activeImportMeta = {source:'manual',baselineMode:''};
-setClassification({type:'operating',department:'pipe',baselineMode:'running_with_before',trialStatus:'completed'});
-loadTemplate(false);
-renderProductionPanel();
-renderDashboard();
-
-window.__processControlTest = {parseExcelWorkbook, calculatePipeOutput, difference, normalizeScope};
-
-let currentPrintRecordId = null;
-
-function openPrintSettings(id) {
-  const record = records.find(item => item.id === id);
-  if (!record) return;
-  currentPrintRecordId = id;
-
-  const metaItems = recordMeta(record);
-  const hasFormulation = record.parameters.some(p => normalize(p.group).includes('formul'));
-  const otherParams = record.parameters.filter(p => !normalize(p.group).includes('formul'));
-
-  const trial = record.type === 'trial';
-  const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
-
-  const displayParameters = otherParams.filter(parameter => {
-    if (!withBefore) return true;
-    const a = String(parameter.before || '').trim();
-    const b = String(parameter.after || parameter.value || '').trim();
-    if (a === '' && b === '') return false;
-    if (a === '' && b !== '') return true;
-    return a !== b;
-  });
-
-  let html = '<div style="display:grid; gap:12px;">';
-
-  html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
-  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header &amp; Information Fields</strong>';
-  html += '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">';
-  
-  metaItems.forEach(([label, value]) => {
-    html += `<label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
-               <input type="checkbox" class="hide-meta-cb" value="${esc(label)}" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
-               <span style="font-size:12px; color:var(--text);">${esc(label)}: <strong style="color:var(--muted);">${esc(value)}</strong></span>
-             </label>`;
-  });
-  
-  ['Purpose', 'Observations', 'Conclusion'].forEach(item => {
-    html += `<label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
-               <input type="checkbox" class="hide-meta-cb" value="${esc(item)}" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
-               <span style="font-size:12px; color:var(--text);">${esc(item)} Box</span>
-             </label>`;
-  });
-
-  html += '</div></div>';
-
-  html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
-  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Parameters &amp; Sections</strong>';
-  html += '<div style="display:grid; gap:8px;">';
-
-  if (hasFormulation) {
-    html += `<label style="display:flex; gap:12px; align-items:center; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
-               <input type="checkbox" id="hideFormulationCb" value="formulation" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
-               <div><strong style="display:block; color:var(--text); font-size:12.5px;">Entire Formulation Section</strong><small style="color:var(--muted); font-size:11px;">Hides all raw materials and total weight</small></div>
-             </label>`;
-  }
-
-  displayParameters.forEach(p => {
-    html += `<label style="display:flex; gap:12px; align-items:center; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
-               <input type="checkbox" class="hide-param-cb" value="${esc(p.name)}" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
-               <div><strong style="display:block; color:var(--text); font-size:12.5px;">${esc(p.name)} ${p.unit ? '('+p.unit+')' : ''}</strong><small style="color:var(--muted); font-size:11px;">${esc(p.group)}</small></div>
-             </label>`;
-  });
-
-  html += '</div></div></div>';
-
-  document.querySelector('#printSettingsContent').innerHTML = html || '<div class="empty">No specific items to hide for this record.</div>';
-  document.querySelector('#printSettingsDialog').showModal();
-}
-
-document.addEventListener('click', e => {
-  if (e.target.closest('#closePrintSettings') || e.target.closest('#cancelPrintBtn')) {
-    document.querySelector('#printSettingsDialog')?.close();
-  }
-});
-
-document.addEventListener('click', e => {
-  const btn = e.target.closest('#confirmPrintBtn');
-  if (btn) {
-    const hideFormulation = document.querySelector('#hideFormulationCb')?.checked || false;
-    const hiddenParams = Array.from(document.querySelectorAll('.hide-param-cb:checked')).map(cb => cb.value);
-    const hiddenMeta = Array.from(document.querySelectorAll('.hide-meta-cb:checked')).map(cb => cb.value);
-    document.querySelector('#printSettingsDialog')?.close();
-    printRecord(currentPrintRecordId, { hideFormulation, hiddenParams, hiddenMeta });
-  }
-});

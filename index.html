@@ -148,6 +148,8 @@
             <div class="toolbar-actions">
               <input id="materialSearchInput" type="search" placeholder="Filter material, product, trial no..." />
               <button class="ghost-btn" id="printMaterialsBtn">Print PDF</button>
+              <!-- زر تصدير الخامات فقط المطلوب -->
+              <button class="secondary-btn" id="btnExportMaterialsOnly">Export Materials Only (PDF)</button>
             </div>
           </div>
 
@@ -201,8 +203,29 @@
   <dialog id="recordDialog">
     <div class="dialog-head"><div><span class="eyebrow">RECORD DETAILS</span><h3 id="dialogTitle"></h3></div><button id="closeDialog" type="button" aria-label="Close">×</button></div>
     <div id="dialogContent"></div>
-    <div class="form-actions"><button id="dialogPdfBtn" class="primary-btn" type="button">Print / PDF</button></div>
+    <div class="form-actions">
+      <!-- أزرار إضافية داخل نافذة تفاصيل السجل للتصدير مع الـ Checkboxes -->
+      <button id="btnExportPDF" class="primary-btn" type="button">Custom PDF Export</button>
+      <button id="dialogPdfBtn" class="ghost-btn" type="button">Print / PDF</button>
+    </div>
   </dialog>
+
+  <!-- نافذة التخصيص (Modal) للتحكم في إخفاء البيانات قبل التصدير لملف الـ PDF -->
+  <div id="pdfFilterModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h3>Customize Report Data</h3>
+      <p>Select data items you want to <strong>hide</strong> from the PDF report:</p>
+      
+      <div id="checkboxContainer" class="checkbox-grid">
+        <!-- Checkboxes will be rendered dynamically via JS -->
+      </div>
+      
+      <div class="modal-actions">
+        <button id="btnConfirmExport" class="primary-btn" type="button">Export Now</button>
+        <button id="btnCancelExport" class="ghost-btn" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <input id="excelFileInput" type="file" accept=".xlsx,.xls" hidden />
   <div id="toast" class="toast"></div>

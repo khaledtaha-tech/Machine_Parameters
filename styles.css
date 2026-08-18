@@ -21,6 +21,48 @@
 .preview-dialog{width:min(1080px,96vw)}.preview-table-wrap{overflow:auto;max-height:43vh;margin-top:15px}.preview-actions{position:sticky;bottom:-24px;margin:18px -24px -24px;padding:14px 24px;background:var(--panel);border-top:1px solid var(--line)}.warning-box{margin:12px 0;padding:12px 14px;border-radius:10px;border-left:4px solid var(--warning);background:rgba(255,203,107,.08);color:#edcc8d}.warning-box p{margin:4px 0}.production-report p{margin:5px 0;color:var(--text)}
 .data-row,.data-head{grid-template-columns:100px 105px 1fr 1fr 105px 100px 160px;min-width:940px}.row-actions{flex-wrap:wrap}.icon-btn{font-weight:700}
 
+/* تنسيق النافذة المنبثقة (Modal) للتخصيص */
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 15px 0;
+}
+.checkbox-grid label {
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* التنسيق الخاص بالطباعة وتصدير الـ PDF (أزرق وأبيض ويملا الصفحة) */
+#pdfPrintArea {
+    width: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #ffffff;
+    color: #333333;
+}
+#pdfPrintArea table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+#pdfPrintArea th {
+    background-color: #0A2540;
+    color: #ffffff;
+    padding: 15px;
+    font-size: 16pt;
+    text-align: left;
+    border: 1px solid #0A2540;
+}
+#pdfPrintArea td {
+    padding: 12px;
+    font-size: 14pt;
+    border: 1px solid #dddddd;
+    background-color: #fcfcfc;
+}
+#pdfPrintArea tr:nth-child(even) td {
+    background-color: #f4f7fb;
+}
+
 body[data-theme="light"]{--bg:#f3f7f9;--sidebar:#eef4f6;--panel:#ffffff;--panel2:#edf4f6;--line:#cbd9df;--text:#16303d;--muted:#667f8c;--shadow:0 16px 42px rgba(35,75,91,.10);background:radial-gradient(circle at 80% 0%,#dff4f0 0,#f5f8fa 42%);color:var(--text)}
 body[data-theme="light"] .sidebar{background:linear-gradient(180deg,#eef7f5,#e6f0f3);border-color:var(--line)}body[data-theme="light"] .nav-btn{color:#526d79}body[data-theme="light"] .nav-btn:hover,body[data-theme="light"] .nav-btn.active{color:#0d7564;background:linear-gradient(90deg,rgba(39,211,162,.16),rgba(70,169,255,.08))}body[data-theme="light"] .side-card,body[data-theme="light"] .stat-card,body[data-theme="light"] .panel{background:#fff}body[data-theme="light"] .hero-panel{background:linear-gradient(135deg,rgba(39,211,162,.13),rgba(70,169,255,.10));border-color:#b8d9dc}body[data-theme="light"] .hero-panel p,body[data-theme="light"] label,body[data-theme="light"] .recent-item p,body[data-theme="light"] .recent-item small{color:#5f7a87}body[data-theme="light"] input,body[data-theme="light"] select,body[data-theme="light"] textarea{background:#f8fbfc;border-color:#bfd0d7;color:#16303d}body[data-theme="light"] .secondary-btn{background:#dff1f3;color:#174d5a;border-color:#aed0d7}body[data-theme="light"] .ghost-btn{color:#345f6d;border-color:#bdd0d7}body[data-theme="light"] .param-row,body[data-theme="light"] .library-item,body[data-theme="light"] .notes-box,body[data-theme="light"] .rate-cards>div{background:#f7fafb;border-color:#cad9df}body[data-theme="light"] dialog{background:#fff;color:var(--text);border-color:#bdd1d9}body[data-theme="light"] dialog::backdrop{background:rgba(20,45,56,.52)}body[data-theme="light"] .dialog-head button{color:#294e5b}body[data-theme="light"] .detail-box{background:#f7fafb;border-color:#cbd9df}body[data-theme="light"] .detail-table th{background:#e8f1f3;color:#3c6674}body[data-theme="light"] .detail-table th,body[data-theme="light"] .detail-table td{border-color:#c4d3d9}body[data-theme="light"] .wizard-choice{background:#f7fbfb;border-color:#bfd2d8;color:var(--text)}body[data-theme="light"] .bar{background:#dbe6ea}body[data-theme="light"] .data-row:hover{background:#eff7f7}body[data-theme="light"] .preview-actions{background:#fff}body[data-theme="light"] .production-panel,body[data-theme="light"] .preview-production,body[data-theme="light"] .production-report{border-color:#b9d4da}
 
