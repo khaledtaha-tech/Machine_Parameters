@@ -29,12 +29,11 @@ async function fetchServerRecords() {
 
 async function postRecordToServer(record) {
   try {
-    const response = await fetch('api.php', {
+    await fetch('api.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record)
     });
-    if (!response.ok) throw new Error('Server rejected record');
   } catch (e) {
     console.log('Failed to sync record to server, saved locally');
   }
@@ -366,7 +365,7 @@ function editRecord(id) {
     trialStatus: record.status || (record.type === 'trial' ? 'completed' : '')
   });
 
-  const fields = ['recordDate', 'trialNo', 'machine', 'workers', 'product', 'formulaCode', 'color', 'cavities', 'batches', 'preparingDate', 'mixingDate', 'pelletizingDate', 'purpose', 'observations', 'conclusion'];
+  const fields = ['recordDate', 'trialNo', 'machine', 'product', 'formulaCode', 'color', 'cavities', 'batches', 'preparingDate', 'mixingDate', 'pelletizingDate', 'purpose', 'observations', 'conclusion'];
   fields.forEach(f => {
     const val = record[f] || (f === 'recordDate' ? record.date : '');
     if ($('#' + f) && !isBlank(val)) $('#' + f).value = val;
@@ -555,7 +554,7 @@ function normalizeScope(value) {
 function scopeMatches(scope, department) { return scope === 'common' || scope === department; }
 
 function isInformationName(name) {
-  return /^(trial no|trial number|record date|trial date|date|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|worker count|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
+  return /^(trial no|trial number|record date|trial date|date|purpose|trial purpose|machine|machine id|machine line|line|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
 }
 
 function valueType(value, parameterName) {
@@ -587,7 +586,6 @@ function assignInformation(target, name, value) {
   const map = {
     'trial no': 'trialNo', 'trial number': 'trialNo', 'record date': 'recordDate', 'trial date': 'recordDate', 'date': 'recordDate',
     'purpose': 'purpose', 'trial purpose': 'purpose', 'machine': 'machine', 'machine id': 'machine', 'machine line': 'machine', 'line': 'machine',
-    'number of workers': 'workers', 'no of workers': 'workers', 'workers': 'workers', 'worker count': 'workers',
     'product': 'product', 'product name': 'product', 'product code': 'formulaCode', 'formula code': 'formulaCode', 'code': 'formulaCode', 'color': 'color',
     'no of cavities': 'cavities', 'number of cavities': 'cavities', 'cavities': 'cavities', 'no of batches': 'batches', 'number of batches': 'batches', 'batches': 'batches',
     'preparing date': 'preparingDate', 'date of mixing': 'mixingDate', 'mixing date': 'mixingDate', 'date of pelletizing': 'pelletizingDate', 'pelletizing date': 'pelletizingDate',
@@ -776,7 +774,7 @@ function confirmImport() {
   setClassification(classification);
   const info = pendingImport.information;
   const values = {
-    trialNo: info.trialNo, recordDate: toInputDate(info.recordDate) || new Date().toISOString().slice(0, 10), machine: info.machine, workers: info.workers, product: info.product,
+    trialNo: info.trialNo, recordDate: toInputDate(info.recordDate) || new Date().toISOString().slice(0, 10), machine: info.machine, product: info.product,
     formulaCode: info.formulaCode, color: info.color, cavities: info.cavities, batches: info.batches, preparingDate: toInputDate(info.preparingDate), mixingDate: toInputDate(info.mixingDate), pelletizingDate: toInputDate(info.pelletizingDate), purpose: info.purpose, observations: info.observations, conclusion: info.conclusion
   };
   Object.entries(values).forEach(([id, value]) => { if ($('#' + id) && !isBlank(value)) $('#' + id).value = value; });
@@ -821,10 +819,9 @@ function saveRecord(event) {
   const finalProduct = rawProduct || (isPlanned ? (trialNo ? `Trial ${trialNo} (Raw Materials Only)` : 'Raw Materials Batch Trial') : 'Standard Product');
   const finalMachine = rawMachine || (isPlanned ? 'Pending Execution' : 'Unassigned Line');
 
-  const previousRecord = editingRecordId ? records.find(r => r.id === editingRecordId) : null;
   const record = {
-    id: uid(),
-    createdAt: new Date().toISOString(),
+    id: editingRecordId || uid(),
+    createdAt: editingRecordId ? (records.find(r => r.id === editingRecordId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     type: field('recordType'),
     status: isTrial ? (field('trialStatus') || 'completed') : 'completed',
@@ -832,7 +829,6 @@ function saveRecord(event) {
     date: field('recordDate') || new Date().toISOString().slice(0, 10),
     trialNo: trialNo,
     machine: finalMachine,
-    workers: field('workers'),
     product: finalProduct,
     formulaCode: field('formulaCode'),
     color: field('color'),
@@ -847,17 +843,21 @@ function saveRecord(event) {
     conclusion: field('conclusion'),
     parameters: activeParameters.map(({ rowId, ...parameter }) => parameter),
     production: activeProduction ? { ...activeProduction, adoptedValue: adoptedProductionValue(activeProduction) } : null,
-    importMeta: activeImportMeta,
-    revisionOf: previousRecord?.id || null,
-    revisionNumber: previousRecord ? (previousRecord.revisionNumber || 1) + 1 : 1
+    importMeta: activeImportMeta
   };
 
-  records.unshift(record);
-  editingRecordId = null;
-  toast(previousRecord ? 'New record version saved; previous version preserved' : (isPlanned ? 'Raw materials proof saved successfully' : 'Record saved successfully'));
+  if (editingRecordId) {
+    const index = records.findIndex(r => r.id === editingRecordId);
+    if (index >= 0) records[index] = record;
+    else records.unshift(record);
+    editingRecordId = null;
+    toast('Record updated successfully');
+  } else {
+    records.unshift(record);
+    toast(isPlanned ? 'Raw materials proof saved successfully' : 'Record saved successfully');
+  }
 
   save();
-  void postRecordToServer(record);
   renderDashboard();
   renderMaterials();
   switchView('records');
@@ -1048,13 +1048,15 @@ function importJsonFile(file) {
     try {
       const data = JSON.parse(event.target.result);
       if (!Array.isArray(data)) throw new Error('Invalid JSON format: array expected.');
+      const seen = new Set(records.map(r => r.id));
       let added = 0;
       for (const item of data) {
         if (!item || !item.id) continue;
-        const imported = { ...item, id: uid(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), revisionOf: item.id, revisionNumber: (item.revisionNumber || 1) + 1 };
-        records.push(imported);
-        void postRecordToServer(imported);
-        added += 1;
+        if (!seen.has(item.id)) {
+          records.push(item);
+          seen.add(item.id);
+          added += 1;
+        }
       }
       save();
       renderDashboard();
@@ -1072,7 +1074,6 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
   const trial = record.type === 'trial';
   const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
   const blank = printable ? '-' : '—';
-  if (!(record.parameters || []).length) return '';
 
   let header = '';
   if (printable) {
@@ -1083,7 +1084,7 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
 
   const displayParameters = (record.parameters || []).filter(parameter => {
     if (printable) {
-      if (hideOptions.hideFormulation && isFormulationParameter(parameter)) return false;
+      if (hideOptions.hideFormulation && normalize(parameter.group).includes('formul')) return false;
       if (hideOptions.hiddenParams.includes(parameter.name)) return false;
     }
     if (!withBefore) return true;
@@ -1120,36 +1121,13 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
   return `<table class="${printable ? 'print-table' : 'detail-table'}"><thead>${theadHTML}</thead><tbody>${rows}</tbody></table>`;
 }
 
-function isFormulationParameter(parameter) {
-  return normalize(parameter.group).includes('formul') || isFormulaMaterial(parameter.group, parameter.name);
-}
-
-function reportParameterSection(record, title, predicate, hideOptions) {
-  const parameters = (record.parameters || []).filter(predicate);
-  if (!parameters.length) return '';
-  return `<section class="print-section"><h3>${esc(title)}</h3>${recordParameterTable({ ...record, parameters }, true, hideOptions)}</section>`;
-}
-
-function reportParameterSections(record, hideOptions) {
-  const isFormulation = parameter => isFormulationParameter(parameter);
-  const isTemperature = parameter => /temperatures?|heating|cooling|zone|die|adapter|nozzle|oil/.test(normalize(parameter.group + ' ' + parameter.name));
-  const isTrialResult = parameter => /result|outcome|quality|defect|observation|calculated/.test(normalize(parameter.group + ' ' + parameter.name));
-  const isOperating = parameter => !isFormulation(parameter) && !isTemperature(parameter) && !isTrialResult(parameter);
-  return [
-    reportParameterSection(record, 'Formulation', isFormulation, hideOptions),
-    reportParameterSection(record, 'Operating Parameters', isOperating, hideOptions),
-    reportParameterSection(record, 'Temperatures', isTemperature, hideOptions),
-    reportParameterSection(record, 'Trial Results', isTrialResult, hideOptions)
-  ].join('');
-}
-
 function recordMeta(record) {
   const trial = record.type === 'trial';
   const isPlanned = trial && record.status === 'planned';
   const items = [
     ['Type', trial ? (isPlanned ? 'Planned Trial (Raw Materials Proof)' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Trial Values Only')) : 'Operating Conditions'],
     ['Status', trial ? (isPlanned ? 'Pending Run / Materials Only' : 'Executed / Completed') : 'Active'],
-    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Number of Workers', record.workers], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Preparing Date', record.preparingDate], ['Mixing Date', record.mixingDate], ['Pelletizing Date', record.pelletizingDate]
+    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Preparing Date', record.preparingDate], ['Mixing Date', record.mixingDate], ['Pelletizing Date', record.pelletizingDate]
   ];
   if (trial && !isPlanned) items.splice(2, 0, ['Before Trial Status', baselineLabels[record.baselineMode || 'running_with_before']]);
   return items.filter(([, value]) => !isBlank(value));
@@ -1224,9 +1202,7 @@ function buildPrintDocument(record, hideOptions = { hideFormulation: false, hidd
     .print-note h4 { margin: 0 0 3px; font-size: 10px; color: #1e40af; text-transform: uppercase; font-weight: 800; }
     .print-note p { margin: 0; white-space: pre-wrap; line-height: 1.25; font-size: 9.5px; }
     .footer { margin-top: 8px; color: #64748b; font-size: 8.5px; text-align: right; font-weight: 600; }
-  .print-section { margin-top: 9px; break-inside: avoid; }
-    .print-section h3 { margin: 9px 0 3px; padding: 5px 8px; border-left: 4px solid #2563eb; background: #eff6ff; color: #1e40af; font-size: 11px; text-transform: uppercase; }
-  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} - ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${reportParameterSections(record, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
+  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} - ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${recordParameterTable(record, true, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
     function fitPage() {
       setTimeout(() => window.print(), 250);
     }
@@ -1281,7 +1257,7 @@ $('#recordForm')?.addEventListener('submit', saveRecord);
 $('#materialSearchInput')?.addEventListener('input', renderMaterials);
 $('#printMaterialsBtn')?.addEventListener('click', printMaterialsReport);
 $('#closeDialog')?.addEventListener('click', () => $('#recordDialog').close());
-$('#dialogPdfBtn')?.addEventListener('click', () => openPrintSettings(selectedRecordId));
+$('#dialogPdfBtn')?.addEventListener('click', () => printRecord(selectedRecordId));
 $('#exportBtn')?.addEventListener('click', () => { const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `process-control-records-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(link.href); });
 $('#importJsonBtn')?.addEventListener('click', () => { $('#jsonFileInput').value = ''; $('#jsonFileInput').click(); });
 $('#jsonFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) importJsonFile(file); });
@@ -1306,14 +1282,20 @@ function openPrintSettings(id) {
   currentPrintRecordId = id;
 
   const metaItems = recordMeta(record);
-  const parameters = record.parameters || [];
-  const hasFormulation = parameters.some(isFormulationParameter);
-  const otherParams = parameters.filter(p => !isFormulationParameter(p));
+  const hasFormulation = record.parameters.some(p => normalize(p.group).includes('formul'));
+  const otherParams = record.parameters.filter(p => !normalize(p.group).includes('formul'));
 
   const trial = record.type === 'trial';
   const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
 
-  const displayParameters = otherParams;
+  const displayParameters = otherParams.filter(parameter => {
+    if (!withBefore) return true;
+    const a = String(parameter.before || '').trim();
+    const b = String(parameter.after || parameter.value || '').trim();
+    if (a === '' && b === '') return false;
+    if (a === '' && b !== '') return true;
+    return a !== b;
+  });
 
   let html = '<div style="display:grid; gap:12px;">';
 
@@ -1357,20 +1339,13 @@ function openPrintSettings(id) {
 
   html += '</div></div></div>';
 
-  const content = document.querySelector('#printSettingsContent');
-  const dialog = document.querySelector('#printSettingsDialog');
-  if (!content || !dialog) { toast('PDF settings dialog is unavailable.'); return; }
-  content.innerHTML = html || '<div class="empty">No specific items to hide for this record.</div>';
-  dialog.showModal();
+  document.querySelector('#printSettingsContent').innerHTML = html || '<div class="empty">No specific items to hide for this record.</div>';
+  document.querySelector('#printSettingsDialog').showModal();
 }
 
 document.addEventListener('click', e => {
-  if (e.target.closest('#closePrintSettings')) {
+  if (e.target.closest('#closePrintSettings') || e.target.closest('#cancelPrintBtn')) {
     document.querySelector('#printSettingsDialog')?.close();
-  }
-  if (e.target.closest('#cancelPrintBtn')) {
-    document.querySelector('#printSettingsDialog')?.close();
-    printRecord(currentPrintRecordId);
   }
 });
 
