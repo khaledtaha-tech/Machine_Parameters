@@ -1,4 +1,3 @@
-
 async function fetchServerRecords() {
   try {
     const response = await fetch('api.php');
@@ -40,16 +39,62 @@ async function postRecordToServer(record) {
   }
 }
 
-// Version: 2.8 - Robust Material Classification & Formula Code Isolation
 const STORAGE_KEY = 'processControlRecordsV2';
 const LIBRARY_KEY = 'processControlParameterLibraryV2';
 const THEME_KEY = 'processControlThemeV1';
 
 const defaultLibrary = [
-  ['pvc57', 'PVC 57', 'kg', 'common', 'Formula'], ['caco3', 'Calcium Carbonate', 'kg', 'common', 'Formula'], ['stabilizer', 'Stabilizer', 'kg', 'common', 'Formula'], ['tio2', 'Titanium Dioxide, 134a', 'kg', 'common', 'Formula'], ['lp551', 'Lub., LP-551', 'kg', 'common', 'Formula'], ['sag12', 'Lub., SAG-Lub 12', 'kg', 'common', 'Formula'], ['finaluxg1', 'Lub., Finalux G1', 'kg', 'common', 'Formula'], ['finaluxg322', 'Lub., Finalux G322', 'kg', 'common', 'Formula'], ['pewax', 'PE Wax', 'kg', 'common', 'Formula'], ['esbo', 'ESBO', 'kg', 'common', 'Formula'], ['calciumstearate', 'Calcium Stearate', 'kg', 'common', 'Formula'],
-  ['productweight', 'Product Weight', 'kg', 'common', 'Product'], ['cycle', 'Cycle / Cut Time', 's', 'common', 'Process'], ['meltTemp', 'Melt Temperature', '°C', 'common', 'Temperature'], ['zone1', 'Zone 1 Set / Actual', '°C', 'common', 'Temperature'], ['zone2', 'Zone 2 Set / Actual', '°C', 'common', 'Temperature'], ['zone3', 'Zone 3 Set / Actual', '°C', 'common', 'Temperature'], ['zone4', 'Zone 4 Set / Actual', '°C', 'common', 'Temperature'], ['zone5', 'Zone 5 Set / Actual', '°C', 'common', 'Temperature'], ['zone6', 'Zone 6 Set / Actual', '°C', 'common', 'Temperature'], ['motorload', 'Motor Load', 'A / %', 'common', 'Machine'], ['screwspeedcommon', 'Screw Speed', 'rpm', 'common', 'Machine'], ['meltpressure', 'Melt Pressure', 'bar', 'common', 'Machine'],
-  ['filling', 'Filling Time', 's', 'fittings', 'Injection'], ['cooling', 'Cooling Time', 's', 'fittings', 'Injection'], ['refilling', 'Refilling Time', 's', 'fittings', 'Injection'], ['shotsize', 'Shot Size', 'mm', 'fittings', 'Injection'], ['cushion', 'Cushion', 'mm', 'fittings', 'Injection'], ['holdp1', 'Hold Pressure P1', 'bar / s', 'fittings', 'Injection'], ['holdp2', 'Hold Pressure P2', 'bar / s', 'fittings', 'Injection'], ['runnerweight', 'Runner Weight', 'kg', 'fittings', 'Product'], ['nozzle', 'Nozzle Temp Set / Actual', '°C', 'fittings', 'Temperature'], ['oiltemp', 'Oil Temperature', '°C', 'fittings', 'Machine'], ['injectionspeed', 'Injection Speed', '%', 'fittings', 'Injection'], ['backpressure', 'Back Pressure', 'bar', 'fittings', 'Injection'], ['clampingforce', 'Clamping Force', 'T', 'fittings', 'Machine'],
-  ['screwspeed', 'Extruder Screw Speed', 'rpm', 'pipe', 'Extrusion'], ['linespeed', 'Line Speed', 'm/min', 'pipe', 'Extrusion'], ['hauloff', 'Haul-off Speed', 'm/min', 'pipe', 'Extrusion'], ['output', 'Output', 'kg/h', 'pipe', 'Extrusion'], ['vacuum', 'Vacuum Pressure', 'bar', 'pipe', 'Sizing & Cooling'], ['waterTemp1', 'Cooling Tank 1 Water Temp', '°C', 'pipe', 'Sizing & Cooling'], ['waterTemp2', 'Cooling Tank 2 Water Temp', '°C', 'pipe', 'Sizing & Cooling'], ['dieTemp', 'Die Head Temperature', '°C', 'pipe', 'Temperature'], ['adapterTemp', 'Adapter Temperature', '°C', 'pipe', 'Temperature'], ['od', 'Outside Diameter', 'mm', 'pipe', 'Product'], ['thickness', 'Wall Thickness', 'mm', 'pipe', 'Product'], ['meterweight', 'Meter Weight', 'kg/m', 'pipe', 'Product'], ['cutlength', 'Cut / Coil Length', 'm', 'pipe', 'Product'], ['printer', 'Printing Condition', 'text', 'pipe', 'Downstream'], ['cutter', 'Cutter / Winder Condition', 'text', 'pipe', 'Downstream']
+  ['pvc57', 'PVC 57', 'kg', 'common', 'Formula'],
+  ['caco3', 'Calcium Carbonate', 'kg', 'common', 'Formula'],
+  ['stabilizer', 'Stabilizer', 'kg', 'common', 'Formula'],
+  ['tio2', 'Titanium Dioxide, 134a', 'kg', 'common', 'Formula'],
+  ['lp551', 'Lub., LP-551', 'kg', 'common', 'Formula'],
+  ['sag12', 'Lub., SAG-Lub 12', 'kg', 'common', 'Formula'],
+  ['finaluxg1', 'Lub., Finalux G1', 'kg', 'common', 'Formula'],
+  ['finaluxg322', 'Lub., Finalux G322', 'kg', 'common', 'Formula'],
+  ['pewax', 'PE Wax', 'kg', 'common', 'Formula'],
+  ['esbo', 'ESBO', 'kg', 'common', 'Formula'],
+  ['calciumstearate', 'Calcium Stearate', 'kg', 'common', 'Formula'],
+  ['productweight', 'Product Weight', 'kg', 'common', 'Product'],
+  ['cycle', 'Cycle / Cut Time', 's', 'common', 'Process'],
+  ['meltTemp', 'Melt Temperature', '°C', 'common', 'Temperature'],
+  ['zone1', 'Zone 1 Set / Actual', '°C', 'common', 'Temperature'],
+  ['zone2', 'Zone 2 Set / Actual', '°C', 'common', 'Temperature'],
+  ['zone3', 'Zone 3 Set / Actual', '°C', 'common', 'Temperature'],
+  ['zone4', 'Zone 4 Set / Actual', '°C', 'common', 'Temperature'],
+  ['zone5', 'Zone 5 Set / Actual', '°C', 'common', 'Temperature'],
+  ['zone6', 'Zone 6 Set / Actual', '°C', 'common', 'Temperature'],
+  ['motorload', 'Motor Load', 'A / %', 'common', 'Machine'],
+  ['screwspeedcommon', 'Screw Speed', 'rpm', 'common', 'Machine'],
+  ['meltpressure', 'Melt Pressure', 'bar', 'common', 'Machine'],
+  ['filling', 'Filling Time', 's', 'fittings', 'Injection'],
+  ['cooling', 'Cooling Time', 's', 'fittings', 'Injection'],
+  ['refilling', 'Refilling Time', 's', 'fittings', 'Injection'],
+  ['shotsize', 'Shot Size', 'mm', 'fittings', 'Injection'],
+  ['cushion', 'Cushion', 'mm', 'fittings', 'Injection'],
+  ['holdp1', 'Hold Pressure P1', 'bar / s', 'fittings', 'Injection'],
+  ['holdp2', 'Hold Pressure P2', 'bar / s', 'fittings', 'Injection'],
+  ['runnerweight', 'Runner Weight', 'kg', 'fittings', 'Product'],
+  ['nozzle', 'Nozzle Temp Set / Actual', '°C', 'fittings', 'Temperature'],
+  ['oiltemp', 'Oil Temperature', '°C', 'fittings', 'Machine'],
+  ['injectionspeed', 'Injection Speed', '%', 'fittings', 'Injection'],
+  ['backpressure', 'Back Pressure', 'bar', 'fittings', 'Injection'],
+  ['clampingforce', 'Clamping Force', 'T', 'fittings', 'Machine'],
+  ['screwspeed', 'Extruder Screw Speed', 'rpm', 'pipe', 'Extrusion'],
+  ['linespeed', 'Line Speed', 'm/min', 'pipe', 'Extrusion'],
+  ['hauloff', 'Haul-off Speed', 'm/min', 'pipe', 'Extrusion'],
+  ['output', 'Output', 'kg/h', 'pipe', 'Extrusion'],
+  ['vacuum', 'Vacuum Pressure', 'bar', 'pipe', 'Sizing & Cooling'],
+  ['waterTemp1', 'Cooling Tank 1 Water Temp', '°C', 'pipe', 'Sizing & Cooling'],
+  ['waterTemp2', 'Cooling Tank 2 Water Temp', '°C', 'pipe', 'Sizing & Cooling'],
+  ['dieTemp', 'Die Head Temperature', '°C', 'pipe', 'Temperature'],
+  ['adapterTemp', 'Adapter Temperature', '°C', 'pipe', 'Temperature'],
+  ['od', 'Outside Diameter', 'mm', 'pipe', 'Product'],
+  ['thickness', 'Wall Thickness', 'mm', 'pipe', 'Product'],
+  ['meterweight', 'Meter Weight', 'kg/m', 'pipe', 'Product'],
+  ['cutlength', 'Cut / Coil Length', 'm', 'pipe', 'Product'],
+  ['printer', 'Printing Condition', 'text', 'pipe', 'Downstream'],
+  ['cutter', 'Cutter / Winder Condition', 'text', 'pipe', 'Downstream']
 ].map(([id, name, unit, department, group]) => ({ id, name, unit, department, group }));
 
 const templates = {
@@ -160,7 +205,7 @@ function switchView(view) {
   $$('.view').forEach(element => element.classList.remove('active'));
   $(`#${view}View`).classList.add('active');
   $$('.nav-btn').forEach(button => button.classList.toggle('active', button.dataset.view === view));
-  $('#pageTitle').textContent = ({ dashboard: 'Dashboard', 'new-record': 'New Record', records: 'Records', materials: 'Trial Materials Audit', settings: 'Parameter Library' })[view];
+  $('#pageTitle').textContent = ({ dashboard: 'Dashboard', 'new-record': 'New Record', records: 'Records', materials: 'Trial Materials Audit', settings: 'Parameter Library' })[view] || 'Dashboard';
   if (view === 'records') renderRecords();
   if (view === 'dashboard') renderDashboard();
   if (view === 'materials') renderMaterials();
@@ -170,7 +215,7 @@ function switchView(view) {
 function applyTheme(theme) {
   const selected = theme === 'light' ? 'light' : 'dark';
   document.body.dataset.theme = selected;
-  $('#themeToggle').textContent = selected === 'dark' ? '☀ Light' : '☾ Dark';
+  if ($('#themeToggle')) $('#themeToggle').textContent = selected === 'dark' ? 'Light' : 'Dark';
   localStorage.setItem(THEME_KEY, selected);
 }
 
@@ -230,19 +275,19 @@ function renderWizard() {
 
   if (wizard.step === 'type') {
     $('#wizardTitle').textContent = 'What do you want to record?';
-    content.innerHTML = `<p class="wizard-lead">Choose whether this is a normal operating run or a trial.</p><div class="wizard-grid">${wizardChoice('operating', 'Normal Operating Conditions', 'One set of reference production parameters.', '▣')}${wizardChoice('trial', 'Trial', 'A controlled trial (tested on machine or raw materials proof).', '⇄')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Choose whether this is a normal operating run or a trial.</p><div class="wizard-grid">${wizardChoice('operating', 'Normal Operating Conditions', 'One set of reference production parameters.', 'O')}${wizardChoice('trial', 'Trial', 'A controlled trial (tested on machine or raw materials proof).', 'T')}</div>`;
   } else if (wizard.step === 'department') {
     $('#wizardTitle').textContent = 'Which production section?';
-    content.innerHTML = `<p class="wizard-lead">Select the section (Pipes Extrusion or Fittings Injection).</p><div class="wizard-grid">${wizardChoice('pipe', 'Pipes', 'Extrusion lines and pipe production.', '⌀')}${wizardChoice('fittings', 'Fittings', 'Injection machines and fittings.', '⚙')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Select the section (Pipes Extrusion or Fittings Injection).</p><div class="wizard-grid">${wizardChoice('pipe', 'Pipes', 'Extrusion lines and pipe production.', 'P')}${wizardChoice('fittings', 'Fittings', 'Injection machines and fittings.', 'F')}</div>`;
   } else if (wizard.step === 'execution_status') {
     $('#wizardTitle').textContent = 'Has this trial been executed on the machine, or is it raw materials preparation only?';
-    content.innerHTML = `<p class="wizard-lead">Prove raw materials consumption even before running the trial.</p><div class="wizard-grid baseline-grid">${wizardChoice('completed', 'Executed / Tested on Machine', 'The trial was run on the line; operating conditions, speeds and results are ready.', '✔')}${wizardChoice('planned', 'Raw Materials Prepared Only (Proof of Materials)', 'Materials are batched & mixed; machine has not run yet. Log raw materials now to prevent inventory shortage.', '⚖')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Prove raw materials consumption even before running the trial.</p><div class="wizard-grid baseline-grid">${wizardChoice('completed', 'Executed / Tested on Machine', 'The trial was run on the line; operating conditions, speeds and results are ready.', 'OK')}${wizardChoice('planned', 'Raw Materials Prepared Only (Proof of Materials)', 'Materials are batched & mixed; machine has not run yet. Log raw materials now to prevent inventory shortage.', 'MAT')}</div>`;
   } else if (wizard.step === 'baseline') {
     $('#wizardTitle').textContent = 'What was the machine status before the trial?';
     content.innerHTML = `<p class="wizard-lead">Controls how before & after conditions are compared.</p><div class="wizard-grid baseline-grid">${wizardChoice('running_with_before', 'Running — previous conditions available', 'Compare Normal/Before vs Trial/After and calculate differences.', 'A')}${wizardChoice('running_no_before', 'Running — no previous conditions available', 'Import Trial / After values only; Before is ignored.', 'B')}${wizardChoice('machine_stopped', 'Machine was stopped before the trial', 'Import startup / trial values only.', 'C')}</div>`;
   } else {
     $('#wizardTitle').textContent = 'How will you enter the record?';
-    content.innerHTML = `<p class="wizard-lead">Excel import populates the form for review; it never saves automatically.</p><div class="wizard-grid">${wizardChoice('excel', 'Import from Excel', 'Read the workbook sheet and show a full preview.', 'X')}${wizardChoice('manual', 'Manual Entry', 'Open a form preloaded with standard parameters.', '✎')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Excel import populates the form for review; it never saves automatically.</p><div class="wizard-grid">${wizardChoice('excel', 'Import from Excel', 'Read the workbook sheet and show a full preview.', 'X')}${wizardChoice('manual', 'Manual Entry', 'Open a form preloaded with standard parameters.', 'M')}</div>`;
   }
 }
 
@@ -320,7 +365,7 @@ function renderModeSummary() {
 
   $('#recordModeSummary').innerHTML = `<div><strong>${trial ? (isPlanned ? 'Trial (Raw Materials Proof Only)' : 'Executed Trial') : 'Operating Conditions'} · ${cap($('#department').value)}</strong><small>${trial ? (isPlanned ? 'Materials Logged — Machine run pending' : baselineLabels[mode]) : 'Normal production record'} — ${valueRule}</small></div><button class="text-btn" id="changeModeBtn" type="button">Change</button>`;
   $('#changeModeBtn').addEventListener('click', () => openNewRecordWizard({ type: $('#recordType').value, department: $('#department').value, baselineMode: mode, trialStatus: $('#trialStatus')?.value }));
-  $('#parameterHelp').textContent = valueRule;
+  if ($('#parameterHelp')) $('#parameterHelp').textContent = valueRule;
   updateFieldRequirements();
 }
 
@@ -378,6 +423,30 @@ function editRecord(id) {
   toast('Record loaded for editing/updating.');
 }
 
+function openRecord(id) {
+  const record = records.find(item => item.id === id);
+  if (!record) return;
+  selectedRecordId = id;
+  const content = $('#recordDetailContent');
+  if (content) {
+    const meta = recordMeta(record);
+    const infoHtml = meta.map(([k, v]) => `<div class="detail-box"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
+    content.innerHTML = `
+      <div class="detail-grid">${infoHtml}</div>
+      ${record.purpose ? `<div class="detail-box" style="margin-top:8px;"><span>Purpose</span><p>${esc(record.purpose)}</p></div>` : ''}
+      ${productionHtml(record, false)}
+      <div style="margin-top:12px;">${recordParameterTable(record, false)}</div>
+      ${(record.observations || record.conclusion) ? `
+        <div class="detail-grid" style="margin-top:12px;">
+          ${record.observations ? `<div class="detail-box"><span>Observations</span><p>${esc(record.observations)}</p></div>` : ''}
+          ${record.conclusion ? `<div class="detail-box"><span>Conclusion</span><p>${esc(record.conclusion)}</p></div>` : ''}
+        </div>
+      ` : ''}
+    `;
+  }
+  $('#recordDialog')?.showModal();
+}
+
 function filteredLibrary() {
   const department = $('#department').value;
   return library.filter(parameter => parameter.department === 'common' || parameter.department === department);
@@ -416,7 +485,7 @@ function difference(before, after) {
     const percent = na === 0 ? null : delta / Math.abs(na) * 100;
     return { label: `${delta > 0 ? '+' : ''}${round(delta)}${percent === null ? '' : ` (${percent > 0 ? '+' : ''}${percent.toFixed(1)}%)`}`, kind: delta > 0 ? 'increase' : 'decrease' };
   }
-  return normalize(a) === normalize(b) ? { label: 'No Change', kind: 'same' } : { label: `${a} → ${b}`, kind: 'changed' };
+  return normalize(a) === normalize(b) ? { label: 'No Change', kind: 'same' } : { label: `${a} -> ${b}`, kind: 'changed' };
 }
 
 function renderParameterTable() {
@@ -441,7 +510,7 @@ function renderParameterTable() {
     } else {
       values = `<input class="param-value wide-value" value="${esc(parameter.value || '')}" placeholder="Normal / Operating Value" ${calculated ? 'readonly' : ''}/>`;
     }
-    return `<div class="param-row ${rowClass}" data-id="${parameter.rowId}"><div class="param-label"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.group || '')} · ${esc(parameter.unit || 'No unit')}${calculated ? ' · Calculated' : ''}</small></div><input class="param-unit" value="${esc(parameter.unit || '')}" placeholder="Unit"/>${values}<button type="button" class="remove-btn">×</button></div>`;
+    return `<div class="param-row ${rowClass}" data-id="${parameter.rowId}"><div class="param-label"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.group || '')} · ${esc(parameter.unit || 'No unit')}${calculated ? ' · Calculated' : ''}</small></div><input class="param-unit" value="${esc(parameter.unit || '')}" placeholder="Unit"/>${values}<button type="button" class="remove-btn">x</button></div>`;
   }).join('');
 
   $$('.param-row').forEach(row => {
@@ -880,16 +949,18 @@ function renderDashboard() {
   const fittings = records.filter(record => record.department === 'fittings').length;
   const common = records.filter(record => record.department === 'common').length;
   const trials = records.filter(record => record.type === 'trial').length;
-  $('#statTotal').textContent = total;
-  $('#statPipe').textContent = pipe;
-  $('#statFitting').textContent = fittings;
-  $('#statTrials').textContent = trials;
+  if ($('#statTotal')) $('#statTotal').textContent = total;
+  if ($('#statPipe')) $('#statPipe').textContent = pipe;
+  if ($('#statFitting')) $('#statFitting').textContent = fittings;
+  if ($('#statTrials')) $('#statTrials').textContent = trials;
   const percent = number => total ? Math.round(number / total * 100) : 0;
   [['pipe', pipe], ['fitting', fittings], ['common', common]].forEach(([key, number]) => {
     if ($(`#${key}Bar`)) $(`#${key}Bar`).style.width = percent(number) + '%';
     if ($(`#${key}Percent`)) $(`#${key}Percent`).textContent = percent(number) + '%';
   });
-  $('#recentRecords').innerHTML = records.slice(0, 5).map(record => `<div class="recent-item"><div class="dept-icon">${record.department === 'pipe' ? '⌀' : record.department === 'fittings' ? '⚙' : '◇'}</div><div><h4>${esc(record.product)} — ${esc(record.machine)}</h4><p>${cap(record.department)} · ${record.type === 'trial' ? (record.status === 'planned' ? 'Pending Run / Materials Only' : 'Trial') : 'Operating Conditions'}</p></div><small>${esc(record.date)}</small></div>`).join('') || '<div class="empty">No records yet.</div>';
+  if ($('#recentRecords')) {
+    $('#recentRecords').innerHTML = records.slice(0, 5).map(record => `<div class="recent-item"><div class="dept-icon">${record.department === 'pipe' ? 'P' : record.department === 'fittings' ? 'F' : 'C'}</div><div><h4>${esc(record.product)} — ${esc(record.machine)}</h4><p>${cap(record.department)} · ${record.type === 'trial' ? (record.status === 'planned' ? 'Pending Run / Materials Only' : 'Trial') : 'Operating Conditions'}</p></div><small>${esc(record.date)}</small></div>`).join('') || '<div class="empty">No records yet.</div>';
+  }
 }
 
 function getFilteredRecords() {
@@ -912,12 +983,13 @@ function getFilteredRecords() {
 
 function renderRecords() {
   const data = getFilteredRecords();
+  if (!$('#recordsTable')) return;
   $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div>Machine / Line</div><div>Product</div><div>Department</div><div>Code</div><div>Actions</div></div>${data.map(record => {
     let typeBadge = `<span class="badge ${record.type}">${esc(record.type)}</span>`;
     if (record.type === 'trial' && record.status === 'planned') {
       typeBadge = `<span class="badge trial" style="border:1px solid #f59e0b; color:#fbbf24; background:rgba(245,158,11,0.12);">Pending Run / Materials Only</span>`;
     }
-    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div>${esc(record.machine)}</div><div>${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div>${esc(record.formulaCode || '—')}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button><button class="icon-btn delete delete-record" data-id="${record.id}">×</button></div></div>`;
+    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div>${esc(record.machine)}</div><div>${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div>${esc(record.formulaCode || '—')}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button><button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
   }).join('') || '<div class="empty">No matching records.</div>'}`;
 
   $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
@@ -996,14 +1068,18 @@ function renderMaterials() {
   });
 
   const totalBatches = records.filter(r => r.type === 'trial').reduce((acc, r) => acc + (parseNumber(r.batches) || 1), 0);
-  $('#statTrialBatches').textContent = totalBatches;
-  $('#statTotalMaterialKg').textContent = `${totalKg.toFixed(2)} kg`;
-  $('#statTotalPvcKg').textContent = `${pvcKg.toFixed(2)} kg`;
-  $('#statTotalCaco3Kg').textContent = `${caco3Kg.toFixed(2)} kg`;
+  if ($('#statTrialBatches')) $('#statTrialBatches').textContent = totalBatches;
+  if ($('#statTotalMaterialKg')) $('#statTotalMaterialKg').textContent = `${totalKg.toFixed(2)} kg`;
+  if ($('#statTotalPvcKg')) $('#statTotalPvcKg').textContent = `${pvcKg.toFixed(2)} kg`;
+  if ($('#statTotalCaco3Kg')) $('#statTotalCaco3Kg').textContent = `${caco3Kg.toFixed(2)} kg`;
 
-  $('#materialsSummaryTable').innerHTML = `<div class="data-head" style="grid-template-columns: 50px 1fr 140px 140px;"><div>#</div><div>Raw Material</div><div>Trials Count</div><div>Total Consumed</div></div>${summary.map((item, idx) => `<div class="data-row" style="grid-template-columns: 50px 1fr 140px 140px;"><div>${idx + 1}</div><div><strong>${esc(item.name)}</strong></div><div>${item.count}</div><div><span class="badge trial">${item.totalQty.toFixed(2)} ${esc(item.unit)}</span></div></div>`).join('') || '<div class="empty">No trial formulation materials recorded yet.</div>'}`;
+  if ($('#materialsSummaryTable')) {
+    $('#materialsSummaryTable').innerHTML = `<div class="data-head" style="grid-template-columns: 50px 1fr 140px 140px;"><div>#</div><div>Raw Material</div><div>Trials Count</div><div>Total Consumed</div></div>${summary.map((item, idx) => `<div class="data-row" style="grid-template-columns: 50px 1fr 140px 140px;"><div>${idx + 1}</div><div><strong>${esc(item.name)}</strong></div><div>${item.count}</div><div><span class="badge trial">${item.totalQty.toFixed(2)} ${esc(item.unit)}</span></div></div>`).join('') || '<div class="empty">No trial formulation materials recorded yet.</div>'}`;
+  }
 
-  $('#materialsDetailedTable').innerHTML = `<div class="data-head" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>#</div><div>Date</div><div>Trial No</div><div>Status</div><div>Product</div><div>Material</div><div>Qty/Batch</div><div>Batches</div><div>Total Qty</div></div>${filteredDetails.map((item, idx) => `<div class="data-row" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>${idx + 1}</div><div>${esc(item.date)}</div><div><span class="badge trial">${esc(item.trialNo)}</span></div><div><small style="color:${item.status === 'Pending Run' ? '#f59e0b' : 'inherit'}">${esc(item.status)}</small></div><div>${esc(item.product)}</div><div><strong>${esc(item.material)}</strong></div><div>${item.unitQty} ${esc(item.unit)}</div><div>${item.batches}</div><div><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></div></div>`).join('') || '<div class="empty">No matching material consumption entries.</div>'}`;
+  if ($('#materialsDetailedTable')) {
+    $('#materialsDetailedTable').innerHTML = `<div class="data-head" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>#</div><div>Date</div><div>Trial No</div><div>Status</div><div>Product</div><div>Material</div><div>Qty/Batch</div><div>Batches</div><div>Total Qty</div></div>${filteredDetails.map((item, idx) => `<div class="data-row" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>${idx + 1}</div><div>${esc(item.date)}</div><div><span class="badge trial">${esc(item.trialNo)}</span></div><div><small style="color:${item.status === 'Pending Run' ? '#f59e0b' : 'inherit'}">${esc(item.status)}</small></div><div>${esc(item.product)}</div><div><strong>${esc(item.material)}</strong></div><div>${item.unitQty} ${esc(item.unit)}</div><div>${item.batches}</div><div><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></div></div>`).join('') || '<div class="empty">No matching material consumption entries.</div>'}`;
+  }
 }
 
 function printMaterialsReport() {
@@ -1082,7 +1158,6 @@ function importJsonFile(file) {
 function recordParameterTable(record, printable = false, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
   const trial = record.type === 'trial';
   const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
-  const blank = printable ? '-' : '—';
   if (!(record.parameters || []).length) return '';
 
   let header = '';
@@ -1233,7 +1308,8 @@ function printRecord(id, hideOptions = { hideFormulation: false, hiddenParams: [
 }
 
 function renderLibrary() {
-  $('#libraryList').innerHTML = library.map(parameter => `<div class="library-item"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.unit || 'No unit')}</small><span class="badge ${parameter.department}">${esc(parameter.department)}</span><button class="icon-btn delete lib-delete" data-id="${parameter.id}">×</button></div>`).join('');
+  if (!$('#libraryList')) return;
+  $('#libraryList').innerHTML = library.map(parameter => `<div class="library-item"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.unit || 'No unit')}</small><span class="badge ${parameter.department}">${esc(parameter.department)}</span><button class="icon-btn delete lib-delete" data-id="${parameter.id}">x</button></div>`).join('');
   $$('.lib-delete').forEach(button => button.addEventListener('click', () => { if (confirm('Delete this parameter?')) { library = library.filter(parameter => parameter.id !== button.dataset.id); saveLibrary(); renderLibrary(); renderPicker(); } }));
 }
 
@@ -1299,11 +1375,6 @@ function openPrintSettings(id) {
   const hasFormulation = parameters.some(isFormulationParameter);
   const otherParams = parameters.filter(p => !isFormulationParameter(p));
 
-  const trial = record.type === 'trial';
-  const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
-
-  const displayParameters = otherParams;
-
   let html = '<div style="display:grid; gap:12px;">';
 
   html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
@@ -1337,7 +1408,7 @@ function openPrintSettings(id) {
              </label>`;
   }
 
-  displayParameters.forEach(p => {
+  otherParams.forEach(p => {
     html += `<label style="display:flex; gap:12px; align-items:center; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
                <input type="checkbox" class="hide-param-cb" value="${esc(p.name)}" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
                <div><strong style="display:block; color:var(--text); font-size:12.5px;">${esc(p.name)} ${p.unit ? '(' + p.unit + ')' : ''}</strong><small style="color:var(--muted); font-size:11px;">${esc(p.group)}</small></div>
