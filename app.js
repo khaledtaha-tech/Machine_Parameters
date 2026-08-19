@@ -473,8 +473,8 @@ function loadTemplate(showToast = true) {
 }
 
 function difference(before, after) {
-  const a = String(before ?? '').trim();
-  const b = String(after ?? '').trim();
+  const a = String(before || '').trim();
+  const b = String(after || '').trim();
   if (!a && !b) return { label: '—', kind: 'neutral' };
   if (!a && b) return { label: 'Added', kind: 'added' };
   if (a && !b) return { label: 'Removed', kind: 'removed' };
@@ -534,7 +534,7 @@ function updateRowDifference(row, parameter) {
 
 function parseNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
-  const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+  const match = String(value || '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
   return match ? Number(match[0]) : NaN;
 }
 
@@ -747,8 +747,8 @@ function parseExcelWorkbook(workbook, classification) {
       parameter.after = String(trialValue || normalValue || '').trim();
     } else if (classification.baselineMode === 'running_with_before') {
       if (isBlank(normalValue) && isBlank(trialValue)) continue;
-      parameter.before = String(normalValue ?? '').trim();
-      parameter.after = String(trialValue ?? '').trim();
+      parameter.before = String(normalValue || '').trim();
+      parameter.after = String(trialValue || '').trim();
     } else {
       if (!isBlank(normalValue)) result.ignoredBeforeCount += 1;
       if (isBlank(trialValue)) continue;
@@ -1261,41 +1261,142 @@ function buildPrintDocument(record, hideOptions = { hideFormulation: false, hidd
   const purposeLabel = reportPurposeLabel(record);
   const generatedAt = new Date().toLocaleString();
 
-  const showPurpose = !hideOptions.hiddenMeta.includes('Purpose') && record.purpose;
+  const showPurpose = !hideOptions.hiddenMeta.includes('Purpose') && Boolean(record.purpose);
   const showObservations = !hideOptions.hiddenMeta.includes('Observations');
   const showConclusion = !hideOptions.hiddenMeta.includes('Conclusion');
 
+  const visibleParams = (record.parameters || []).filter(p => {
+    if (hideOptions.hideFormulation && isFormulationParameter(p)) return false;
+    if (hideOptions.hiddenParams.includes(p.name)) return false;
+    const a = String(p.before || '').trim();
+    const b = String(p.after || p.value || '').trim();
+    return a !== '' || b !== '';
+  });
+
+  const rowCount = visibleParams.length + meta.length;
+  const density = rowCount <= 14 ? 'spacious' : rowCount <= 25 ? 'standard' : 'compact';
+
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(record.product)} Report</title><style>
     @page { size: A4 portrait; margin: 6mm 8mm; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    html, body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; color: #0f172a; font-size: 9.5px; line-height: 1.15; }
-    .report-root { width: 100%; display: flex; flex-direction: column; }
-    header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; padding: 6px 10px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
-    h1 { font-size: 14px; line-height: 1.1; margin: 0; font-weight: 800; }
-    h2 { font-size: 11px; color: #bfdbfe; margin: 0; font-weight: 600; }
-    .print-purpose { display: ${showPurpose ? 'grid' : 'none'}; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; border: 1px solid #bfdbfe; border-left: 4px solid #2563eb; border-radius: 4px; padding: 4px 8px; margin: 3px 0; background: #eff6ff; }
-    .print-purpose span { font-size: 8.5px; font-weight: 800; color: #1e40af; text-transform: uppercase; }
-    .print-purpose strong { font-size: 10px; color: #0f172a; }
-    .print-meta { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin: 3px 0; }
-    .print-meta div { border: 1px solid #cbd5e1; border-radius: 3px; padding: 3px 5px; background: #f8fafc; }
-    .print-meta span { display: block; color: #64748b; font-size: 7.5px; text-transform: uppercase; font-weight: 700; line-height: 1; margin-bottom: 2px; }
-    .print-meta div strong { font-size: 9px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-    .print-table { width: 100%; border-collapse: collapse; margin-top: 3px; table-layout: fixed; font-size: 9px; }
-    .print-table th, .print-table td { border: 1px solid #cbd5e1; padding: 2.5px 5px; text-align: left; vertical-align: middle; line-height: 1.15; }
-    .print-table th { background: #e2e8f0; font-size: 8.5px; font-weight: 800; color: #1e293b; text-transform: uppercase; }
-    .print-production { border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; border-radius: 3px; padding: 3px 6px; margin: 3px 0; background: #f8fafc; font-size: 9px; }
-    .print-production h4 { margin: 0 0 2px; font-size: 9.5px; color: #1e40af; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-font-smoothing: antialiased; }
+    html, body { margin: 0; padding: 0; background: #fff; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; }
+    
+    .report-root { width: 100%; display: flex; flex-direction: column; justify-content: space-between; min-height: 275mm; }
+    .content-wrap { flex: 1; display: flex; flex-direction: column; }
+    
+    header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .spacious header { padding: 8px 12px; margin-bottom: 6px; }
+    .standard header { padding: 6px 10px; margin-bottom: 4px; }
+    .compact header { padding: 4px 8px; margin-bottom: 3px; }
+    
+    h1 { margin: 0; font-weight: 700; line-height: 1.1; }
+    .spacious h1 { font-size: 16px; }
+    .standard h1 { font-size: 14px; }
+    .compact h1 { font-size: 12.5px; }
+    
+    h2 { color: #bfdbfe; margin: 0; font-weight: 500; }
+    .spacious h2 { font-size: 12px; }
+    .standard h2 { font-size: 10.5px; }
+    .compact h2 { font-size: 9.5px; }
+    
+    .print-purpose { display: ${showPurpose ? 'grid' : 'none'}; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; border: 1px solid #bfdbfe; border-left: 4px solid #2563eb; border-radius: 4px; background: #eff6ff; }
+    .spacious .print-purpose { padding: 6px 10px; margin: 5px 0; font-size: 11px; }
+    .standard .print-purpose { padding: 4px 8px; margin: 3px 0; font-size: 9.5px; }
+    .compact .print-purpose { padding: 3px 6px; margin: 2px 0; font-size: 8.5px; }
+    .print-purpose span { font-weight: 700; color: #1e40af; text-transform: uppercase; }
+    
+    .print-meta { display: grid; grid-template-columns: repeat(6, 1fr); }
+    .spacious .print-meta { gap: 5px; margin: 5px 0; }
+    .standard .print-meta { gap: 3px; margin: 3px 0; }
+    .compact .print-meta { gap: 2px; margin: 2px 0; }
+    
+    .print-meta div { border: 1px solid #cbd5e1; border-radius: 3px; background: #f8fafc; }
+    .spacious .print-meta div { padding: 4px 6px; }
+    .standard .print-meta div { padding: 3px 5px; }
+    .compact .print-meta div { padding: 2px 4px; }
+    
+    .print-meta span { display: block; color: #64748b; font-size: 7.5px; text-transform: uppercase; font-weight: 600; line-height: 1; margin-bottom: 2px; }
+    .print-meta div strong { color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .spacious .print-meta div strong { font-size: 10px; }
+    .standard .print-meta div strong { font-size: 9px; }
+    .compact .print-meta div strong { font-size: 8px; }
+    
+    .print-section { break-inside: avoid; }
+    .spacious .print-section { margin-top: 6px; }
+    .standard .print-section { margin-top: 4px; }
+    .compact .print-section { margin-top: 2px; }
+    
+    .print-section h3 { padding: 2px 5px; border-left: 3px solid #2563eb; background: #f1f5f9; color: #1e40af; text-transform: uppercase; font-weight: 700; }
+    .spacious .print-section h3 { margin: 6px 0 3px; font-size: 10.5px; }
+    .standard .print-section h3 { margin: 4px 0 2px; font-size: 9.5px; }
+    .compact .print-section h3 { margin: 2px 0 1px; font-size: 8.5px; }
+    
+    .print-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .print-table th, .print-table td { border: 1px solid #cbd5e1; text-align: left; vertical-align: middle; line-height: 1.2; }
+    
+    .spacious .print-table th, .spacious .print-table td { padding: 4.5px 7px; font-size: 10px; }
+    .standard .print-table th, .standard .print-table td { padding: 2.5px 5px; font-size: 9px; }
+    .compact .print-table th, .compact .print-table td { padding: 1.5px 4px; font-size: 8px; }
+    
+    .print-table th { background: #e2e8f0; font-weight: 700; color: #1e293b; text-transform: uppercase; }
+    
+    .print-production { border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; border-radius: 3px; background: #f8fafc; }
+    .spacious .print-production { padding: 5px 8px; margin: 5px 0; font-size: 10px; }
+    .standard .print-production { padding: 3px 6px; margin: 3px 0; font-size: 9px; }
+    .compact .print-production { padding: 2px 4px; margin: 2px 0; font-size: 8px; }
+    .print-production h4 { margin: 0 0 2px; color: #1e40af; }
     .print-production p { margin: 1px 0; }
-    .print-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 4px; }
-    .print-note { border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; border-radius: 3px; padding: 4px 6px; min-height: 35px; background: #f8fafc; }
-    .print-note h4 { margin: 0 0 2px; font-size: 8.5px; color: #1e40af; text-transform: uppercase; font-weight: 800; }
-    .print-note p { margin: 0; white-space: pre-wrap; line-height: 1.15; font-size: 8.5px; color: #0f172a; }
-    .footer { margin-top: 4px; color: #94a3b8; font-size: 7.5px; text-align: right; font-weight: 600; }
-    .print-section { margin-top: 4px; break-inside: avoid; }
-    .print-section h3 { margin: 4px 0 2px; padding: 2px 5px; border-left: 3px solid #2563eb; background: #f1f5f9; color: #1e40af; font-size: 9.5px; text-transform: uppercase; font-weight: 800; }
-  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} — ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${reportParameterSections(record, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
-    window.addEventListener('load', () => setTimeout(() => window.print(), 200));
-  <\/script></body></html>`;
+    
+    .print-notes { display: grid; grid-template-columns: 1fr 1fr; }
+    .spacious .print-notes { gap: 8px; margin-top: 8px; }
+    .standard .print-notes { gap: 5px; margin-top: 4px; }
+    .compact .print-notes { gap: 3px; margin-top: 2px; }
+    
+    .print-note { border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; border-radius: 3px; background: #f8fafc; }
+    .spacious .print-note { padding: 6px 8px; min-height: 55px; }
+    .standard .print-note { padding: 4px 6px; min-height: 35px; }
+    .compact .print-note { padding: 2px 4px; min-height: 24px; }
+    
+    .print-note h4 { margin: 0 0 2px; font-size: 8.5px; color: #1e40af; text-transform: uppercase; font-weight: 700; }
+    .print-note p { margin: 0; white-space: pre-wrap; line-height: 1.2; color: #0f172a; }
+    .spacious .print-note p { font-size: 9.5px; }
+    .standard .print-note p { font-size: 8.5px; }
+    .compact .print-note p { font-size: 7.5px; }
+    
+    .footer { color: #94a3b8; font-size: 7.5px; text-align: right; font-weight: 600; padding-top: 4px; }
+  </style></head><body>
+    <main id="reportRoot" class="report-root ${density}">
+      <div class="content-wrap">
+        <header>
+          <h1>Process Conditions &amp; Trial Report</h1>
+          <h2>${esc(record.product)} — ${esc(record.machine)}</h2>
+        </header>
+        <section class="print-purpose">
+          <span>${esc(purposeLabel)}</span>
+          <strong>${esc(record.purpose || 'Not specified')}</strong>
+        </section>
+        <div class="print-meta">
+          ${meta.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}
+        </div>
+        ${productionHtml(record, true)}
+        ${reportParameterSections(record, hideOptions)}
+        <section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};">
+          <div class="print-note" style="display: ${showObservations ? 'block' : 'none'};">
+            <h4>Observations</h4>
+            <p>${esc(record.observations || '-')}</p>
+          </div>
+          <div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};">
+            <h4>Conclusion / Recommendation</h4>
+            <p>${esc(record.conclusion || '-')}</p>
+          </div>
+        </section>
+      </div>
+      <div class="footer">Generated ${esc(generatedAt)}</div>
+    </main>
+    <script>
+      window.addEventListener('load', () => setTimeout(() => window.print(), 200));
+    <\/script>
+  </body></html>`;
 }
 
 function printRecord(id, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
