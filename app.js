@@ -1172,8 +1172,8 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
       if (hideOptions.hideFormulation && isFormulationParameter(parameter)) return false;
       if (hideOptions.hiddenParams.includes(parameter.name)) return false;
     }
-    const a = String(parameter.before ?? '').trim();
-    const b = String(parameter.after || parameter.value ?? '').trim();
+    const a = String(parameter.before || '').trim();
+    const b = String(parameter.after || parameter.value || '').trim();
     return a !== '' || b !== '';
   });
 
