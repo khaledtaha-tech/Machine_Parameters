@@ -23,6 +23,7 @@ function initApp() {
     setupMaterialsView();
     setupLibraryView();
     setupPdfExportHandlers();
+    setupDialogHandlers();
     renderDashboard();
 }
 
@@ -89,6 +90,35 @@ function setupThemeToggle() {
             body.setAttribute('data-theme', newTheme);
             localStorage.setItem('plastic_factory_theme', newTheme);
             themeToggle.textContent = newTheme === 'dark' ? '☀ Light' : '☾ Dark';
+        });
+    }
+}
+
+function setupDialogHandlers() {
+    const recordDialog = document.getElementById('recordDialog');
+    const closeDialogBtn = document.getElementById('closeDialog');
+    const dialogPdfBtn = document.getElementById('dialogPdfBtn');
+
+    if (closeDialogBtn && recordDialog) {
+        closeDialogBtn.addEventListener('click', () => {
+            recordDialog.close();
+        });
+    }
+
+    if (dialogPdfBtn) {
+        dialogPdfBtn.addEventListener('click', () => {
+            if (activeRecordForPdf) {
+                generatePDFHTML(activeRecordForPdf.parameters || [], activeRecordForPdf.product || 'Production Report');
+            }
+        });
+    }
+
+    if (recordDialog) {
+        recordDialog.addEventListener('click', (e) => {
+            const rect = recordDialog.getBoundingClientRect();
+            if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+                recordDialog.close();
+            }
         });
     }
 }
