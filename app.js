@@ -638,14 +638,25 @@ function parseExcelWorkbook(workbook, classification) {
   const cell = (row, index) => index >= 0 ? row[index] : '';
 
   for (const row of rows.slice(headerRowIndex + 1)) {
-    const name = String(cell(row, columns.parameter) || '').trim();
-    if (!name) continue;
+    let rawName = String(cell(row, columns.parameter) || '').trim();
+    if (!rawName) continue;
+
+    let extractedUnit = '';
+    const unitMatch = rawName.match(/\(([^)]+)\)$/);
+    if (unitMatch) {
+      extractedUnit = unitMatch[1].trim();
+      rawName = rawName.replace(/\(([^)]+)\)$/, '').trim();
+    }
+
+    const name = rawName;
     const type = valueType(cell(row, columns.valueType), name);
     const scope = normalizeScope(cell(row, columns.scope));
     if (!scopeMatches(scope, classification.department)) { result.skippedCount += 1; continue; }
     const normalValue = cell(row, columns.normal);
     const trialValue = cell(row, columns.trial);
-    const unit = String(cell(row, columns.unit) || '').trim();
+    
+    const libItem = library.find(item => normalize(item.name) === normalize(name));
+    const unit = String(cell(row, columns.unit) || extractedUnit || libItem?.unit || '').trim();
     const group = String(cell(row, columns.group) || (type === 'Information' ? 'Information' : 'Imported')).trim();
 
     if (type === 'Information' || isInformationName(name)) {
@@ -1086,37 +1097,40 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
       if (hideOptions.hideFormulation && isFormulationParameter(parameter)) return false;
       if (hideOptions.hiddenParams.includes(parameter.name)) return false;
     }
-    if (!withBefore) return true;
-    const a = String(parameter.before || '').trim();
-    const b = String(parameter.after || parameter.value || '').trim();
-    if (a === '' && b === '') return false;
-    if (a === '' && b !== '') return true;
-    return a !== b;
+    const a = String(parameter.before ?? '').trim();
+    const b = String(parameter.after || parameter.value ?? '').trim();
+    return a !== '' || b !== '';
   });
 
-  if (displayParameters.length === 0 && withBefore) {
-    return `<div class="notes-box"><p>No parameter changes were recorded.</p></div>`;
+  if (displayParameters.length === 0) {
+    return `<div class="notes-box" style="padding:4px; font-size:10px;"><p>No parameter records available.</p></div>`;
   }
 
   const rows = displayParameters.map(parameter => {
     let values;
     if (withBefore) {
-      values = `<td>${esc(parameter.before || blank)}</td><td>${esc(parameter.after || parameter.value || blank)}</td>`;
+      const beforeVal = parameter.before ? esc(parameter.before) : '<span style="color:#94a3b8;">-</span>';
+      const afterVal = (parameter.after || parameter.value) ? esc(parameter.after || parameter.value) : '<span style="color:#94a3b8;">-</span>';
+      values = `<td>${beforeVal}</td><td>${afterVal}</td>`;
     } else {
-      values = `<td>${esc(trial ? (parameter.after || parameter.value || blank) : (parameter.value || blank))}</td>`;
+      const val = (trial ? (parameter.after || parameter.value) : parameter.value);
+      values = `<td>${val ? esc(val) : '<span style="color:#94a3b8;">-</span>'}</td>`;
     }
 
-    const unitText = parameter.unit ? ` (${parameter.unit})` : '';
-    const fullName = `${parameter.name}${unitText}`;
+    const unitText = parameter.unit ? ` <span style="color:#64748b; font-weight:normal;">(${esc(parameter.unit)})</span>` : '';
+    const fullName = `${esc(parameter.name)}${unitText}`;
 
     if (printable) {
-      return `<tr><td>${esc(parameter.group || '')}</td><td>${esc(fullName)}</td>${values}</tr>`;
+      return `<tr><td>${esc(parameter.group || '')}</td><td>${fullName}</td>${values}</tr>`;
     } else {
       return `<tr><td>${esc(parameter.group || '')}</td><td>${esc(parameter.name)}</td><td>${esc(parameter.unit || '')}</td>${values}</tr>`;
     }
   }).join('');
 
-  const theadHTML = printable ? `<tr><th>Group</th><th>Parameter</th>${header}</tr>` : `<tr><th>Group</th><th>Parameter</th><th>Unit</th>${header}</tr>`;
+  const theadHTML = printable 
+    ? (withBefore ? `<tr><th style="width:25%;">Group</th><th style="width:45%;">Parameter</th><th style="width:15%;">Normal / Before</th><th style="width:15%;">Trial / After</th></tr>` : `<tr><th style="width:30%;">Group</th><th style="width:50%;">Parameter</th><th style="width:20%;">${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th></tr>`)
+    : `<tr><th>Group</th><th>Parameter</th><th>Unit</th>${header}</tr>`;
+
   return `<table class="${printable ? 'print-table' : 'detail-table'}"><thead>${theadHTML}</thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -1147,11 +1161,11 @@ function recordMeta(record) {
   const trial = record.type === 'trial';
   const isPlanned = trial && record.status === 'planned';
   const items = [
-    ['Type', trial ? (isPlanned ? 'Planned Trial (Raw Materials Proof)' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Trial Values Only')) : 'Operating Conditions'],
-    ['Status', trial ? (isPlanned ? 'Pending Run / Materials Only' : 'Executed / Completed') : 'Active'],
-    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Number of Workers', record.workers], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Preparing Date', record.preparingDate], ['Mixing Date', record.mixingDate], ['Pelletizing Date', record.pelletizingDate]
+    ['Type', trial ? (isPlanned ? 'Planned Trial' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Single Run')) : 'Operating Conditions'],
+    ['Status', trial ? (isPlanned ? 'Pending Run' : 'Completed') : 'Active'],
+    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Workers', record.workers], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Prep Date', record.preparingDate], ['Mix Date', record.mixingDate], ['Pellet Date', record.pelletizingDate]
   ];
-  if (trial && !isPlanned) items.splice(2, 0, ['Before Trial Status', baselineLabels[record.baselineMode || 'running_with_before']]);
+  if (trial && !isPlanned) items.splice(2, 0, ['Before Status', baselineLabels[record.baselineMode || 'running_with_before']]);
   return items.filter(([, value]) => !isBlank(value));
 }
 
@@ -1164,18 +1178,7 @@ function productionHtml(record, printable = false) {
 }
 
 function reportPurposeLabel(record) {
-  return record.type === 'trial' ? 'Trial Purpose' : 'Reason for Collecting Operating Conditions';
-}
-
-function openRecord(id) {
-  const record = records.find(item => item.id === id);
-  if (!record) return;
-  selectedRecordId = id;
-  $('#dialogTitle').textContent = `${record.product} — ${record.machine}`;
-  const meta = recordMeta(record);
-  const extras = record.importMeta?.extraInformation || [];
-  $('#dialogContent').innerHTML = `<div class="detail-grid">${meta.map(([label, value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}${extras.map(item => `<div class="detail-box"><span>${esc(item.name)}</span>${esc(item.value)}</div>`).join('')}</div>${productionHtml(record)}<div class="notes-box"><h4>${esc(reportPurposeLabel(record))}</h4><p>${esc(record.purpose || 'Not specified')}</p></div>${recordParameterTable(record)}<div class="notes-box"><h4>Observations</h4><p>${esc(record.observations || '—')}</p></div><div class="notes-box"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '—')}</p></div>`;
-  $('#recordDialog').showModal();
+  return record.type === 'trial' ? 'Trial Purpose' : 'Purpose';
 }
 
 function buildPrintDocument(record, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
@@ -1183,54 +1186,40 @@ function buildPrintDocument(record, hideOptions = { hideFormulation: false, hidd
   const purposeLabel = reportPurposeLabel(record);
   const generatedAt = new Date().toLocaleString();
 
-  const showPurpose = !hideOptions.hiddenMeta.includes('Purpose');
+  const showPurpose = !hideOptions.hiddenMeta.includes('Purpose') && record.purpose;
   const showObservations = !hideOptions.hiddenMeta.includes('Observations');
   const showConclusion = !hideOptions.hiddenMeta.includes('Conclusion');
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(record.product)} Report</title><style>
-    @page { size: A4 portrait; margin: 8mm; }
+    @page { size: A4 portrait; margin: 6mm 8mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    html, body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.3; height: 100%; }
-    .report-root { width: 100%; min-height: 275mm; display: flex; flex-direction: column; justify-content: space-between; }
-    header { background: linear-gradient(135deg, #1e40af, #2563eb); color: #fff; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15); }
-    h1 { font-size: 20px; line-height: 1.15; margin: 0 0 3px; font-weight: 800; letter-spacing: 0.3px; }
-    h2 { font-size: 13px; color: #93c5fd; margin: 0; font-weight: 600; }
-    .print-purpose { display: ${showPurpose ? 'grid' : 'none'}; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; border: 1px solid #93c5fd; border-left: 5px solid #2563eb; border-radius: 5px; padding: 7px 10px; margin: 6px 0; background: #eff6ff; }
-    .print-purpose span { font-size: 9.5px; font-weight: 800; color: #1e40af; text-transform: uppercase; }
-    .print-purpose strong { font-size: 11.5px; color: #0f172a; }
-    .print-meta { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin: 6px 0; }
-    .print-meta div { border: 1px solid #cbd5e1; border-radius: 5px; padding: 6px 8px; background: #f8fafc; }
-    .print-meta span { display: block; color: #475569; font-size: 8px; text-transform: uppercase; font-weight: 700; margin-bottom: 2px; }
-    .print-meta div strong { font-size: 10.5px; color: #0f172a; }
-    .print-table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-    .print-table th, .print-table td { border: 1px solid #94a3b8; padding: 5px 7px; text-align: left; vertical-align: middle; line-height: 1.25; overflow-wrap: anywhere; }
-    .print-table th { background: #dbeafe; font-size: 10.5px; font-weight: 800; color: #1e3a8a; }
-    .print-table td { font-size: 10px; font-weight: 500; }
-    
-    .print-table th:nth-child(1), .print-table td:nth-child(1) { width: 30%; }
-    .print-table th:nth-child(2), .print-table td:nth-child(2) { width: 45%; }
-    .print-table th:nth-child(3), .print-table td:nth-child(3) { width: 25%; }
-    
-    .print-table.with-before th:nth-child(1), .print-table.with-before td:nth-child(1) { width: 25%; }
-    .print-table.with-before th:nth-child(2), .print-table.with-before td:nth-child(2) { width: 35%; }
-    .print-table.with-before th:nth-child(3), .print-table.with-before td:nth-child(3) { width: 20%; }
-    .print-table.with-before th:nth-child(4), .print-table.with-before td:nth-child(4) { width: 20%; }
-    
-    .print-production { border: 1px solid #cbd5e1; border-left: 5px solid #2563eb; border-radius: 5px; padding: 6px 10px; margin: 6px 0; background: #f8fafc; font-size: 10px; }
-    .print-production h4 { margin: 0 0 3px; font-size: 10.5px; color: #1e40af; }
-    .print-production p { margin: 2px 0; color: #0f172a; }
-    .print-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-    .print-note { border: 1px solid #cbd5e1; border-left: 5px solid #2563eb; border-radius: 5px; padding: 7px 10px; min-height: 48px; background: #f8fafc; }
-    .print-note h4 { margin: 0 0 3px; font-size: 10px; color: #1e40af; text-transform: uppercase; font-weight: 800; }
-    .print-note p { margin: 0; white-space: pre-wrap; line-height: 1.25; font-size: 9.5px; }
-    .footer { margin-top: 8px; color: #64748b; font-size: 8.5px; text-align: right; font-weight: 600; }
-  .print-section { margin-top: 9px; break-inside: avoid; }
-    .print-section h3 { margin: 9px 0 3px; padding: 5px 8px; border-left: 4px solid #2563eb; background: #eff6ff; color: #1e40af; font-size: 11px; text-transform: uppercase; }
-  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} - ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${reportParameterSections(record, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
-    function fitPage() {
-      setTimeout(() => window.print(), 250);
-    }
-    window.addEventListener('load', fitPage);
+    html, body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; color: #0f172a; font-size: 9.5px; line-height: 1.15; }
+    .report-root { width: 100%; display: flex; flex-direction: column; }
+    header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; padding: 6px 10px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 14px; line-height: 1.1; margin: 0; font-weight: 800; }
+    h2 { font-size: 11px; color: #bfdbfe; margin: 0; font-weight: 600; }
+    .print-purpose { display: ${showPurpose ? 'grid' : 'none'}; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; border: 1px solid #bfdbfe; border-left: 4px solid #2563eb; border-radius: 4px; padding: 4px 8px; margin: 3px 0; background: #eff6ff; }
+    .print-purpose span { font-size: 8.5px; font-weight: 800; color: #1e40af; text-transform: uppercase; }
+    .print-purpose strong { font-size: 10px; color: #0f172a; }
+    .print-meta { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin: 3px 0; }
+    .print-meta div { border: 1px solid #cbd5e1; border-radius: 3px; padding: 3px 5px; background: #f8fafc; }
+    .print-meta span { display: block; color: #64748b; font-size: 7.5px; text-transform: uppercase; font-weight: 700; line-height: 1; margin-bottom: 2px; }
+    .print-meta div strong { font-size: 9px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .print-table { width: 100%; border-collapse: collapse; margin-top: 3px; table-layout: fixed; font-size: 9px; }
+    .print-table th, .print-table td { border: 1px solid #cbd5e1; padding: 2.5px 5px; text-align: left; vertical-align: middle; line-height: 1.15; }
+    .print-table th { background: #e2e8f0; font-size: 8.5px; font-weight: 800; color: #1e293b; text-transform: uppercase; }
+    .print-production { border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; border-radius: 3px; padding: 3px 6px; margin: 3px 0; background: #f8fafc; font-size: 9px; }
+    .print-production h4 { margin: 0 0 2px; font-size: 9.5px; color: #1e40af; }
+    .print-production p { margin: 1px 0; }
+    .print-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 4px; }
+    .print-note { border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; border-radius: 3px; padding: 4px 6px; min-height: 35px; background: #f8fafc; }
+    .print-note h4 { margin: 0 0 2px; font-size: 8.5px; color: #1e40af; text-transform: uppercase; font-weight: 800; }
+    .print-note p { margin: 0; white-space: pre-wrap; line-height: 1.15; font-size: 8.5px; color: #0f172a; }
+    .footer { margin-top: 4px; color: #94a3b8; font-size: 7.5px; text-align: right; font-weight: 600; }
+    .print-section { margin-top: 4px; break-inside: avoid; }
+    .print-section h3 { margin: 4px 0 2px; padding: 2px 5px; border-left: 3px solid #2563eb; background: #f1f5f9; color: #1e40af; font-size: 9.5px; text-transform: uppercase; font-weight: 800; }
+  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} — ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${reportParameterSections(record, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
+    window.addEventListener('load', () => setTimeout(() => window.print(), 200));
   <\/script></body></html>`;
 }
 
