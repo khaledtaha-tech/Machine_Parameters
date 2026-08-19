@@ -26,3 +26,51 @@ body[data-theme="light"] .sidebar{background:linear-gradient(180deg,#eef7f5,#e6f
 
 @media(max-width:900px){.wizard-grid{grid-template-columns:1fr}.param-row.comparison{grid-template-columns:1fr 90px}.param-row.comparison .difference{grid-column:1/-1}.rate-cards{grid-template-columns:1fr}.topbar-actions{flex-wrap:wrap;justify-content:flex-end}}
 @media(max-width:600px){.topbar{gap:12px}.topbar-actions{display:grid;grid-template-columns:1fr}.theme-btn,.topbar-actions .primary-btn{padding:9px 11px}.mode-summary{align-items:flex-start}.wizard-dialog,.preview-dialog{padding:17px}.preview-actions{margin:18px -17px -17px;padding:12px 17px}}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm 8mm 10mm; /* تقليل الهوامش العلوية والسفلية شوية */
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* تعديلات الجداول والمسافات الرأسية */
+.report-container {
+  padding: 10px 15px;
+}
+
+/* تقليل ارتفاع صفوف الجداول */
+table tr th, 
+table tr td {
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/* تقليل المسافات بين السكاشن والعناوين */
+.section-header, 
+.section-title {
+  margin-top: 6px !important;
+  margin-bottom: 4px !important;
+  padding: 3px 6px !important;
+}
+
+/* تقليل البادينج في كروت الـ Header والـ Meta info */
+.meta-box, 
+.info-card {
+  padding: 4px 8px !important;
+  margin-bottom: 6px !important;
+}
+
+/* بوكسات الـ Observations والـ Conclusion */
+.notes-container {
+  margin-top: 6px !important;
+  padding: 4px !important;
+  min-height: 35px !important;
+}
