@@ -1,42 +1,43 @@
 
 async function fetchServerRecords() {
-    try {
-        const response = await fetch('api.php');
-        if (response.ok) {
-            const serverData = await response.json();
-            if (Array.isArray(serverData) && serverData.length > 0) {
-                const seen = new Set(records.map(r => r.id));
-                let newAdded = false;
-                for (const item of serverData) {
-                    if (item && item.id && !seen.has(item.id)) {
-                        records.push(item);
-                        seen.add(item.id);
-                        newAdded = true;
-                    }
-                }
-                if (newAdded) {
-                    save();
-                    renderDashboard();
-                    renderRecords();
-                    renderMaterials();
-                }
-            }
+  try {
+    const response = await fetch('api.php');
+    if (response.ok) {
+      const serverData = await response.json();
+      if (Array.isArray(serverData) && serverData.length > 0) {
+        const seen = new Set(records.map(r => r.id));
+        let newAdded = false;
+        for (const item of serverData) {
+          if (item && item.id && !seen.has(item.id)) {
+            records.push(item);
+            seen.add(item.id);
+            newAdded = true;
+          }
         }
-    } catch (e) {
-        console.log('Running in local offline mode');
+        if (newAdded) {
+          save();
+          renderDashboard();
+          renderRecords();
+          renderMaterials();
+        }
+      }
     }
+  } catch (e) {
+    console.log('Running in local offline mode');
+  }
 }
 
 async function postRecordToServer(record) {
-    try {
-        await fetch('api.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(record)
-        });
-    } catch (e) {
-        console.log('Failed to sync record to server, saved locally');
-    }
+  try {
+    const response = await fetch('api.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    });
+    if (!response.ok) throw new Error('Server rejected record');
+  } catch (e) {
+    console.log('Failed to sync record to server, saved locally');
+  }
 }
 
 // Version: 2.8 - Robust Material Classification & Formula Code Isolation
@@ -45,23 +46,23 @@ const LIBRARY_KEY = 'processControlParameterLibraryV2';
 const THEME_KEY = 'processControlThemeV1';
 
 const defaultLibrary = [
-  ['pvc57','PVC 57','kg','common','Formula'],['caco3','Calcium Carbonate','kg','common','Formula'],['stabilizer','Stabilizer','kg','common','Formula'],['tio2','Titanium Dioxide, 134a','kg','common','Formula'],['lp551','Lub., LP-551','kg','common','Formula'],['sag12','Lub., SAG-Lub 12','kg','common','Formula'],['finaluxg1','Lub., Finalux G1','kg','common','Formula'],['finaluxg322','Lub., Finalux G322','kg','common','Formula'],['pewax','PE Wax','kg','common','Formula'],['esbo','ESBO','kg','common','Formula'],['calciumstearate','Calcium Stearate','kg','common','Formula'],
-  ['productweight','Product Weight','kg','common','Product'],['cycle','Cycle / Cut Time','s','common','Process'],['meltTemp','Melt Temperature','°C','common','Temperature'],['zone1','Zone 1 Set / Actual','°C','common','Temperature'],['zone2','Zone 2 Set / Actual','°C','common','Temperature'],['zone3','Zone 3 Set / Actual','°C','common','Temperature'],['zone4','Zone 4 Set / Actual','°C','common','Temperature'],['zone5','Zone 5 Set / Actual','°C','common','Temperature'],['zone6','Zone 6 Set / Actual','°C','common','Temperature'],['motorload','Motor Load','A / %','common','Machine'],['screwspeedcommon','Screw Speed','rpm','common','Machine'],['meltpressure','Melt Pressure','bar','common','Machine'],
-  ['filling','Filling Time','s','fittings','Injection'],['cooling','Cooling Time','s','fittings','Injection'],['refilling','Refilling Time','s','fittings','Injection'],['shotsize','Shot Size','mm','fittings','Injection'],['cushion','Cushion','mm','fittings','Injection'],['holdp1','Hold Pressure P1','bar / s','fittings','Injection'],['holdp2','Hold Pressure P2','bar / s','fittings','Injection'],['runnerweight','Runner Weight','kg','fittings','Product'],['nozzle','Nozzle Temp Set / Actual','°C','fittings','Temperature'],['oiltemp','Oil Temperature','°C','fittings','Machine'],['injectionspeed','Injection Speed','%','fittings','Injection'],['backpressure','Back Pressure','bar','fittings','Injection'],['clampingforce','Clamping Force','T','fittings','Machine'],
-  ['screwspeed','Extruder Screw Speed','rpm','pipe','Extrusion'],['linespeed','Line Speed','m/min','pipe','Extrusion'],['hauloff','Haul-off Speed','m/min','pipe','Extrusion'],['output','Output','kg/h','pipe','Extrusion'],['vacuum','Vacuum Pressure','bar','pipe','Sizing & Cooling'],['waterTemp1','Cooling Tank 1 Water Temp','°C','pipe','Sizing & Cooling'],['waterTemp2','Cooling Tank 2 Water Temp','°C','pipe','Sizing & Cooling'],['dieTemp','Die Head Temperature','°C','pipe','Temperature'],['adapterTemp','Adapter Temperature','°C','pipe','Temperature'],['od','Outside Diameter','mm','pipe','Product'],['thickness','Wall Thickness','mm','pipe','Product'],['meterweight','Meter Weight','kg/m','pipe','Product'],['cutlength','Cut / Coil Length','m','pipe','Product'],['printer','Printing Condition','text','pipe','Downstream'],['cutter','Cutter / Winder Condition','text','pipe','Downstream']
-].map(([id,name,unit,department,group]) => ({id,name,unit,department,group}));
+  ['pvc57', 'PVC 57', 'kg', 'common', 'Formula'], ['caco3', 'Calcium Carbonate', 'kg', 'common', 'Formula'], ['stabilizer', 'Stabilizer', 'kg', 'common', 'Formula'], ['tio2', 'Titanium Dioxide, 134a', 'kg', 'common', 'Formula'], ['lp551', 'Lub., LP-551', 'kg', 'common', 'Formula'], ['sag12', 'Lub., SAG-Lub 12', 'kg', 'common', 'Formula'], ['finaluxg1', 'Lub., Finalux G1', 'kg', 'common', 'Formula'], ['finaluxg322', 'Lub., Finalux G322', 'kg', 'common', 'Formula'], ['pewax', 'PE Wax', 'kg', 'common', 'Formula'], ['esbo', 'ESBO', 'kg', 'common', 'Formula'], ['calciumstearate', 'Calcium Stearate', 'kg', 'common', 'Formula'],
+  ['productweight', 'Product Weight', 'kg', 'common', 'Product'], ['cycle', 'Cycle / Cut Time', 's', 'common', 'Process'], ['meltTemp', 'Melt Temperature', '°C', 'common', 'Temperature'], ['zone1', 'Zone 1 Set / Actual', '°C', 'common', 'Temperature'], ['zone2', 'Zone 2 Set / Actual', '°C', 'common', 'Temperature'], ['zone3', 'Zone 3 Set / Actual', '°C', 'common', 'Temperature'], ['zone4', 'Zone 4 Set / Actual', '°C', 'common', 'Temperature'], ['zone5', 'Zone 5 Set / Actual', '°C', 'common', 'Temperature'], ['zone6', 'Zone 6 Set / Actual', '°C', 'common', 'Temperature'], ['motorload', 'Motor Load', 'A / %', 'common', 'Machine'], ['screwspeedcommon', 'Screw Speed', 'rpm', 'common', 'Machine'], ['meltpressure', 'Melt Pressure', 'bar', 'common', 'Machine'],
+  ['filling', 'Filling Time', 's', 'fittings', 'Injection'], ['cooling', 'Cooling Time', 's', 'fittings', 'Injection'], ['refilling', 'Refilling Time', 's', 'fittings', 'Injection'], ['shotsize', 'Shot Size', 'mm', 'fittings', 'Injection'], ['cushion', 'Cushion', 'mm', 'fittings', 'Injection'], ['holdp1', 'Hold Pressure P1', 'bar / s', 'fittings', 'Injection'], ['holdp2', 'Hold Pressure P2', 'bar / s', 'fittings', 'Injection'], ['runnerweight', 'Runner Weight', 'kg', 'fittings', 'Product'], ['nozzle', 'Nozzle Temp Set / Actual', '°C', 'fittings', 'Temperature'], ['oiltemp', 'Oil Temperature', '°C', 'fittings', 'Machine'], ['injectionspeed', 'Injection Speed', '%', 'fittings', 'Injection'], ['backpressure', 'Back Pressure', 'bar', 'fittings', 'Injection'], ['clampingforce', 'Clamping Force', 'T', 'fittings', 'Machine'],
+  ['screwspeed', 'Extruder Screw Speed', 'rpm', 'pipe', 'Extrusion'], ['linespeed', 'Line Speed', 'm/min', 'pipe', 'Extrusion'], ['hauloff', 'Haul-off Speed', 'm/min', 'pipe', 'Extrusion'], ['output', 'Output', 'kg/h', 'pipe', 'Extrusion'], ['vacuum', 'Vacuum Pressure', 'bar', 'pipe', 'Sizing & Cooling'], ['waterTemp1', 'Cooling Tank 1 Water Temp', '°C', 'pipe', 'Sizing & Cooling'], ['waterTemp2', 'Cooling Tank 2 Water Temp', '°C', 'pipe', 'Sizing & Cooling'], ['dieTemp', 'Die Head Temperature', '°C', 'pipe', 'Temperature'], ['adapterTemp', 'Adapter Temperature', '°C', 'pipe', 'Temperature'], ['od', 'Outside Diameter', 'mm', 'pipe', 'Product'], ['thickness', 'Wall Thickness', 'mm', 'pipe', 'Product'], ['meterweight', 'Meter Weight', 'kg/m', 'pipe', 'Product'], ['cutlength', 'Cut / Coil Length', 'm', 'pipe', 'Product'], ['printer', 'Printing Condition', 'text', 'pipe', 'Downstream'], ['cutter', 'Cutter / Winder Condition', 'text', 'pipe', 'Downstream']
+].map(([id, name, unit, department, group]) => ({ id, name, unit, department, group }));
 
 const templates = {
-  fittings:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate','productweight','cycle','runnerweight','filling','cooling','refilling','shotsize','cushion','holdp1','holdp2','injectionspeed','backpressure','nozzle','zone1','zone2','zone3','zone4','zone5','oiltemp','screwspeedcommon','motorload'],
-  pipe:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate','od','thickness','meterweight','cutlength','productweight','cycle','output','screwspeed','linespeed','hauloff','meltpressure','meltTemp','dieTemp','adapterTemp','zone1','zone2','zone3','zone4','zone5','vacuum','waterTemp1','waterTemp2','motorload','printer','cutter'],
-  formulaOnly:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate'],
-  common:['pvc57','caco3','stabilizer','tio2','lp551','sag12','finaluxg1','finaluxg322','pewax','esbo','calciumstearate','cycle','meltTemp','zone1','zone2','zone3','zone4','zone5','motorload']
+  fittings: ['pvc57', 'caco3', 'stabilizer', 'tio2', 'lp551', 'sag12', 'finaluxg1', 'finaluxg322', 'pewax', 'esbo', 'calciumstearate', 'productweight', 'cycle', 'runnerweight', 'filling', 'cooling', 'refilling', 'shotsize', 'cushion', 'holdp1', 'holdp2', 'injectionspeed', 'backpressure', 'nozzle', 'zone1', 'zone2', 'zone3', 'zone4', 'zone5', 'oiltemp', 'screwspeedcommon', 'motorload'],
+  pipe: ['pvc57', 'caco3', 'stabilizer', 'tio2', 'lp551', 'sag12', 'finaluxg1', 'finaluxg322', 'pewax', 'esbo', 'calciumstearate', 'od', 'thickness', 'meterweight', 'cutlength', 'productweight', 'cycle', 'output', 'screwspeed', 'linespeed', 'hauloff', 'meltpressure', 'meltTemp', 'dieTemp', 'adapterTemp', 'zone1', 'zone2', 'zone3', 'zone4', 'zone5', 'vacuum', 'waterTemp1', 'waterTemp2', 'motorload', 'printer', 'cutter'],
+  formulaOnly: ['pvc57', 'caco3', 'stabilizer', 'tio2', 'lp551', 'sag12', 'finaluxg1', 'finaluxg322', 'pewax', 'esbo', 'calciumstearate'],
+  common: ['pvc57', 'caco3', 'stabilizer', 'tio2', 'lp551', 'sag12', 'finaluxg1', 'finaluxg322', 'pewax', 'esbo', 'calciumstearate', 'cycle', 'meltTemp', 'zone1', 'zone2', 'zone3', 'zone4', 'zone5', 'motorload']
 };
 
 const baselineLabels = {
-  running_with_before:'Running — previous conditions available',
-  running_no_before:'Running — previous conditions not available',
-  machine_stopped:'Machine stopped before the trial'
+  running_with_before: 'Running — previous conditions available',
+  running_no_before: 'Running — previous conditions not available',
+  machine_stopped: 'Machine stopped before the trial'
 };
 
 function safeJson(text, fallback) {
@@ -78,7 +79,7 @@ function loadAllRecords() {
   ];
   const merged = [];
   const seen = new Set();
-  
+
   for (const key of candidateKeys) {
     const stored = safeJson(localStorage.getItem(key), []);
     if (Array.isArray(stored)) {
@@ -117,7 +118,7 @@ for (const item of defaultLibrary) {
   if (!library.some(existing => existing.id === item.id)) library.push(item);
 }
 const sharedCycle = library.find(item => item.id === 'cycle');
-if (sharedCycle) Object.assign(sharedCycle, {name:'Cycle / Cut Time', department:'common', group:'Process'});
+if (sharedCycle) Object.assign(sharedCycle, { name: 'Cycle / Cut Time', department: 'common', group: 'Process' });
 
 localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
@@ -128,7 +129,7 @@ let activeImportMeta = null;
 let selectedRecordId = null;
 let editingRecordId = null;
 let pendingImport = null;
-let wizard = {step:'type', type:'', trialStatus:'completed', department:'', baselineMode:'running_with_before'};
+let wizard = { step: 'type', type: '', trialStatus: 'completed', department: '', baselineMode: 'running_with_before' };
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -136,7 +137,7 @@ const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const cap = value => value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
 
 function esc(value = '') {
-  return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+  return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 }
 
 function normalize(value = '') {
@@ -159,7 +160,7 @@ function switchView(view) {
   $$('.view').forEach(element => element.classList.remove('active'));
   $(`#${view}View`).classList.add('active');
   $$('.nav-btn').forEach(button => button.classList.toggle('active', button.dataset.view === view));
-  $('#pageTitle').textContent = ({dashboard:'Dashboard','new-record':'New Record',records:'Records',materials:'Trial Materials Audit',settings:'Parameter Library'})[view];
+  $('#pageTitle').textContent = ({ dashboard: 'Dashboard', 'new-record': 'New Record', records: 'Records', materials: 'Trial Materials Audit', settings: 'Parameter Library' })[view];
   if (view === 'records') renderRecords();
   if (view === 'dashboard') renderDashboard();
   if (view === 'materials') renderMaterials();
@@ -184,7 +185,7 @@ function trialHasBefore() {
 function updateFieldRequirements() {
   const isOperating = $('#recordType').value === 'operating';
   const isExecutedTrial = $('#recordType').value === 'trial' && $('#trialStatus')?.value !== 'planned';
-  
+
   if (isOperating || isExecutedTrial) {
     $('#machine')?.setAttribute('required', 'required');
     $('#product')?.setAttribute('required', 'required');
@@ -215,7 +216,7 @@ function renderWizard() {
   const content = $('#wizardContent');
   const back = $('#wizardBack');
   const progress = $('#wizardProgress');
-  
+
   let steps = ['type', 'department'];
   if (wizard.type === 'trial') {
     steps.push('execution_status');
@@ -229,19 +230,19 @@ function renderWizard() {
 
   if (wizard.step === 'type') {
     $('#wizardTitle').textContent = 'What do you want to record?';
-    content.innerHTML = `<p class="wizard-lead">Choose whether this is a normal operating run or a trial.</p><div class="wizard-grid">${wizardChoice('operating','Normal Operating Conditions','One set of reference production parameters.','▣')}${wizardChoice('trial','Trial','A controlled trial (tested on machine or raw materials proof).','⇄')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Choose whether this is a normal operating run or a trial.</p><div class="wizard-grid">${wizardChoice('operating', 'Normal Operating Conditions', 'One set of reference production parameters.', '▣')}${wizardChoice('trial', 'Trial', 'A controlled trial (tested on machine or raw materials proof).', '⇄')}</div>`;
   } else if (wizard.step === 'department') {
     $('#wizardTitle').textContent = 'Which production section?';
-    content.innerHTML = `<p class="wizard-lead">Select the section (Pipes Extrusion or Fittings Injection).</p><div class="wizard-grid">${wizardChoice('pipe','Pipes','Extrusion lines and pipe production.','⌀')}${wizardChoice('fittings','Fittings','Injection machines and fittings.','⚙')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Select the section (Pipes Extrusion or Fittings Injection).</p><div class="wizard-grid">${wizardChoice('pipe', 'Pipes', 'Extrusion lines and pipe production.', '⌀')}${wizardChoice('fittings', 'Fittings', 'Injection machines and fittings.', '⚙')}</div>`;
   } else if (wizard.step === 'execution_status') {
     $('#wizardTitle').textContent = 'Has this trial been executed on the machine, or is it raw materials preparation only?';
-    content.innerHTML = `<p class="wizard-lead">Prove raw materials consumption even before running the trial.</p><div class="wizard-grid baseline-grid">${wizardChoice('completed','Executed / Tested on Machine','The trial was run on the line; operating conditions, speeds and results are ready.','✔')}${wizardChoice('planned','Raw Materials Prepared Only (Proof of Materials)','Materials are batched & mixed; machine has not run yet. Log raw materials now to prevent inventory shortage.','⚖')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Prove raw materials consumption even before running the trial.</p><div class="wizard-grid baseline-grid">${wizardChoice('completed', 'Executed / Tested on Machine', 'The trial was run on the line; operating conditions, speeds and results are ready.', '✔')}${wizardChoice('planned', 'Raw Materials Prepared Only (Proof of Materials)', 'Materials are batched & mixed; machine has not run yet. Log raw materials now to prevent inventory shortage.', '⚖')}</div>`;
   } else if (wizard.step === 'baseline') {
     $('#wizardTitle').textContent = 'What was the machine status before the trial?';
-    content.innerHTML = `<p class="wizard-lead">Controls how before & after conditions are compared.</p><div class="wizard-grid baseline-grid">${wizardChoice('running_with_before','Running — previous conditions available','Compare Normal/Before vs Trial/After and calculate differences.','A')}${wizardChoice('running_no_before','Running — no previous conditions available','Import Trial / After values only; Before is ignored.','B')}${wizardChoice('machine_stopped','Machine was stopped before the trial','Import startup / trial values only.','C')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Controls how before & after conditions are compared.</p><div class="wizard-grid baseline-grid">${wizardChoice('running_with_before', 'Running — previous conditions available', 'Compare Normal/Before vs Trial/After and calculate differences.', 'A')}${wizardChoice('running_no_before', 'Running — no previous conditions available', 'Import Trial / After values only; Before is ignored.', 'B')}${wizardChoice('machine_stopped', 'Machine was stopped before the trial', 'Import startup / trial values only.', 'C')}</div>`;
   } else {
     $('#wizardTitle').textContent = 'How will you enter the record?';
-    content.innerHTML = `<p class="wizard-lead">Excel import populates the form for review; it never saves automatically.</p><div class="wizard-grid">${wizardChoice('excel','Import from Excel','Read the workbook sheet and show a full preview.','X')}${wizardChoice('manual','Manual Entry','Open a form preloaded with standard parameters.','✎')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Excel import populates the form for review; it never saves automatically.</p><div class="wizard-grid">${wizardChoice('excel', 'Import from Excel', 'Read the workbook sheet and show a full preview.', 'X')}${wizardChoice('manual', 'Manual Entry', 'Open a form preloaded with standard parameters.', '✎')}</div>`;
   }
 }
 
@@ -294,7 +295,7 @@ function wizardBack() {
   renderWizard();
 }
 
-function setClassification({type, department, baselineMode, trialStatus}) {
+function setClassification({ type, department, baselineMode, trialStatus }) {
   $('#recordType').value = type || 'operating';
   $('#department').value = department || 'pipe';
   if ($('#trialStatus')) $('#trialStatus').value = trialStatus || 'completed';
@@ -310,30 +311,30 @@ function renderModeSummary() {
   const trial = $('#recordType').value === 'trial';
   const isPlanned = trial && $('#trialStatus')?.value === 'planned';
   const mode = getBaselineMode();
-  
+
   if ($('#trialStatusWrapper')) {
     $('#trialStatusWrapper').style.display = trial ? 'grid' : 'none';
   }
 
   let valueRule = !trial ? 'Use Normal / Before Trial values.' : isPlanned ? 'Raw Materials Prepared Only — formulation recorded for audit; operating parameters will be filled upon machine run.' : mode === 'running_with_before' ? 'Use Before and After values and calculate differences.' : 'Use Trial / After values only; Before values are ignored.';
-  
+
   $('#recordModeSummary').innerHTML = `<div><strong>${trial ? (isPlanned ? 'Trial (Raw Materials Proof Only)' : 'Executed Trial') : 'Operating Conditions'} · ${cap($('#department').value)}</strong><small>${trial ? (isPlanned ? 'Materials Logged — Machine run pending' : baselineLabels[mode]) : 'Normal production record'} — ${valueRule}</small></div><button class="text-btn" id="changeModeBtn" type="button">Change</button>`;
-  $('#changeModeBtn').addEventListener('click', () => openNewRecordWizard({type:$('#recordType').value, department:$('#department').value, baselineMode:mode, trialStatus:$('#trialStatus')?.value}));
+  $('#changeModeBtn').addEventListener('click', () => openNewRecordWizard({ type: $('#recordType').value, department: $('#department').value, baselineMode: mode, trialStatus: $('#trialStatus')?.value }));
   $('#parameterHelp').textContent = valueRule;
   updateFieldRequirements();
 }
 
 function prepareBlankRecord(classification) {
   editingRecordId = null;
-  activeImportMeta = {source:'manual', baselineMode:classification.type === 'trial' ? classification.baselineMode : ''};
+  activeImportMeta = { source: 'manual', baselineMode: classification.type === 'trial' ? classification.baselineMode : '' };
   activeProduction = null;
   activeParameters = [];
   $('#recordForm').reset();
   $('#formSectionTitle').textContent = 'Record Classification';
   $('#saveRecordSubmitBtn').textContent = 'Save Record';
   setClassification(classification);
-  $('#recordDate').value = new Date().toISOString().slice(0,10);
-  
+  $('#recordDate').value = new Date().toISOString().slice(0, 10);
+
   if (classification.trialStatus === 'planned') {
     activeParameters = [];
     templates.formulaOnly.forEach(id => addParameter(library.find(item => item.id === id)));
@@ -341,7 +342,7 @@ function prepareBlankRecord(classification) {
   } else {
     loadTemplate(false);
   }
-  
+
   renderProductionPanel();
   switchView('new-record');
 }
@@ -350,14 +351,14 @@ function editRecord(id) {
   const record = records.find(item => item.id === id);
   if (!record) return;
   editingRecordId = id;
-  activeImportMeta = record.importMeta || {source:'manual', baselineMode:record.baselineMode || ''};
+  activeImportMeta = record.importMeta || { source: 'manual', baselineMode: record.baselineMode || '' };
   activeProduction = record.production || null;
-  activeParameters = (record.parameters || []).map(p => ({...p, rowId:uid()}));
-  
+  activeParameters = (record.parameters || []).map(p => ({ ...p, rowId: uid() }));
+
   $('#recordForm').reset();
   $('#formSectionTitle').textContent = `Editing: ${record.product} (${record.trialNo || record.machine || 'Draft'})`;
   $('#saveRecordSubmitBtn').textContent = 'Update & Save Changes';
-  
+
   setClassification({
     type: record.type || 'operating',
     department: record.department || 'pipe',
@@ -365,7 +366,7 @@ function editRecord(id) {
     trialStatus: record.status || (record.type === 'trial' ? 'completed' : '')
   });
 
-  const fields = ['recordDate','trialNo','machine','product','formulaCode','color','cavities','batches','preparingDate','mixingDate','pelletizingDate','purpose','observations','conclusion'];
+  const fields = ['recordDate', 'trialNo', 'machine', 'workers', 'product', 'formulaCode', 'color', 'cavities', 'batches', 'preparingDate', 'mixingDate', 'pelletizingDate', 'purpose', 'observations', 'conclusion'];
   fields.forEach(f => {
     const val = record[f] || (f === 'recordDate' ? record.date : '');
     if ($('#' + f) && !isBlank(val)) $('#' + f).value = val;
@@ -391,7 +392,7 @@ function renderPicker() {
 
 function addParameter(item) {
   if (!item || activeParameters.some(active => active.libraryId === item.id)) return;
-  activeParameters.push({rowId:uid(), libraryId:item.id, name:item.name, unit:item.unit, group:item.group || 'Other', valueType:'Comparison', scope:item.department, before:'', after:'', value:''});
+  activeParameters.push({ rowId: uid(), libraryId: item.id, name: item.name, unit: item.unit, group: item.group || 'Other', valueType: 'Comparison', scope: item.department, before: '', after: '', value: '' });
 }
 
 function loadTemplate(showToast = true) {
@@ -405,17 +406,17 @@ function loadTemplate(showToast = true) {
 function difference(before, after) {
   const a = String(before ?? '').trim();
   const b = String(after ?? '').trim();
-  if (!a && !b) return {label:'—', kind:'neutral'};
-  if (!a && b) return {label:'Added', kind:'added'};
-  if (a && !b) return {label:'Removed', kind:'removed'};
+  if (!a && !b) return { label: '—', kind: 'neutral' };
+  if (!a && b) return { label: 'Added', kind: 'added' };
+  if (a && !b) return { label: 'Removed', kind: 'removed' };
   const na = parseNumber(a), nb = parseNumber(b);
   if (Number.isFinite(na) && Number.isFinite(nb)) {
-    if (na === nb) return {label:'No Change', kind:'same'};
+    if (na === nb) return { label: 'No Change', kind: 'same' };
     const delta = nb - na;
     const percent = na === 0 ? null : delta / Math.abs(na) * 100;
-    return {label:`${delta > 0 ? '+' : ''}${round(delta)}${percent === null ? '' : ` (${percent > 0 ? '+' : ''}${percent.toFixed(1)}%)`}`, kind:delta > 0 ? 'increase' : 'decrease'};
+    return { label: `${delta > 0 ? '+' : ''}${round(delta)}${percent === null ? '' : ` (${percent > 0 ? '+' : ''}${percent.toFixed(1)}%)`}`, kind: delta > 0 ? 'increase' : 'decrease' };
   }
-  return normalize(a) === normalize(b) ? {label:'No Change', kind:'same'} : {label:`${a} → ${b}`, kind:'changed'};
+  return normalize(a) === normalize(b) ? { label: 'No Change', kind: 'same' } : { label: `${a} → ${b}`, kind: 'changed' };
 }
 
 function renderParameterTable() {
@@ -482,24 +483,24 @@ function findParameterValue(parameters, field, patterns) {
 }
 
 function calculatePipeOutput(parameters, field) {
-  const speed = findParameterValue(parameters, field, [/haul off speed/,/hauloff speed/,/line speed/,/tractor speed/,/puller speed/]);
-  let meterWeight = findParameterValue(parameters, field, [/meter weight/,/weight per meter/,/kg m/]);
-  let productWeight = findParameterValue(parameters, field, [/product weight/,/pipe weight/,/weight of (one )?pipe/]);
-  const length = findParameterValue(parameters, field, [/cut (coil )?length/,/pipe length/,/^length$/]);
-  const cycle = findParameterValue(parameters, field, [/cycle( cut)? time/,/cut time/,/time (to|of) cut/]);
+  const speed = findParameterValue(parameters, field, [/haul off speed/, /hauloff speed/, /line speed/, /tractor speed/, /puller speed/]);
+  let meterWeight = findParameterValue(parameters, field, [/meter weight/, /weight per meter/, /kg m/]);
+  let productWeight = findParameterValue(parameters, field, [/product weight/, /pipe weight/, /weight of (one )?pipe/]);
+  const length = findParameterValue(parameters, field, [/cut (coil )?length/, /pipe length/, /^length$/]);
+  const cycle = findParameterValue(parameters, field, [/cycle( cut)? time/, /cut time/, /time (to|of) cut/]);
   if (!Number.isFinite(meterWeight) && Number.isFinite(productWeight) && Number.isFinite(length) && length > 0) meterWeight = productWeight / length;
   if (!Number.isFinite(productWeight) && Number.isFinite(meterWeight) && Number.isFinite(length)) productWeight = meterWeight * length;
   const bySpeed = Number.isFinite(speed) && Number.isFinite(meterWeight) ? speed * 60 * meterWeight : NaN;
   const byCycle = Number.isFinite(cycle) && cycle > 0 && Number.isFinite(productWeight) ? productWeight * 3600 / cycle : NaN;
   if (!Number.isFinite(bySpeed) && !Number.isFinite(byCycle)) return null;
   const result = {
-    bySpeed:Number.isFinite(bySpeed) ? round(bySpeed) : null,
-    byCycle:Number.isFinite(byCycle) ? round(byCycle) : null,
-    speed:Number.isFinite(speed) ? speed : null,
-    meterWeight:Number.isFinite(meterWeight) ? round(meterWeight, 4) : null,
-    productWeight:Number.isFinite(productWeight) ? round(productWeight, 4) : null,
-    length:Number.isFinite(length) ? length : null,
-    cycle:Number.isFinite(cycle) ? cycle : null
+    bySpeed: Number.isFinite(bySpeed) ? round(bySpeed) : null,
+    byCycle: Number.isFinite(byCycle) ? round(byCycle) : null,
+    speed: Number.isFinite(speed) ? speed : null,
+    meterWeight: Number.isFinite(meterWeight) ? round(meterWeight, 4) : null,
+    productWeight: Number.isFinite(productWeight) ? round(productWeight, 4) : null,
+    length: Number.isFinite(length) ? length : null,
+    cycle: Number.isFinite(cycle) ? cycle : null
   };
   if (result.bySpeed !== null && result.byCycle !== null) result.differencePercent = round(Math.abs(result.bySpeed - result.byCycle) / Math.min(result.bySpeed, result.byCycle) * 100, 1);
   return result;
@@ -511,9 +512,9 @@ function refreshCalculations(renderTable = true) {
   } else {
     const oldChoice = activeProduction?.adoptedMethod || '';
     activeProduction = {
-      before:$('#recordType').value === 'trial' && trialHasBefore() ? calculatePipeOutput(activeParameters, 'before') : null,
-      current:calculatePipeOutput(activeParameters, $('#recordType').value === 'trial' ? 'after' : 'value'),
-      adoptedMethod:oldChoice
+      before: $('#recordType').value === 'trial' && trialHasBefore() ? calculatePipeOutput(activeParameters, 'before') : null,
+      current: calculatePipeOutput(activeParameters, $('#recordType').value === 'trial' ? 'after' : 'value'),
+      adoptedMethod: oldChoice
     };
     if (activeProduction.current) {
       if (activeProduction.current.bySpeed === null) activeProduction.adoptedMethod = 'cycle';
@@ -554,7 +555,7 @@ function normalizeScope(value) {
 function scopeMatches(scope, department) { return scope === 'common' || scope === department; }
 
 function isInformationName(name) {
-  return /^(trial no|trial number|record date|trial date|date|purpose|trial purpose|machine|machine id|machine line|line|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
+  return /^(trial no|trial number|record date|trial date|date|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|worker count|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
 }
 
 function valueType(value, parameterName) {
@@ -584,21 +585,22 @@ function assignInformation(target, name, value) {
   if (isBlank(value)) return;
   const key = normalize(name);
   const map = {
-    'trial no':'trialNo','trial number':'trialNo','record date':'recordDate','trial date':'recordDate','date':'recordDate',
-    'purpose':'purpose','trial purpose':'purpose','machine':'machine','machine id':'machine','machine line':'machine','line':'machine',
-    'product':'product','product name':'product','product code':'formulaCode','formula code':'formulaCode','code':'formulaCode','color':'color',
-    'no of cavities':'cavities','number of cavities':'cavities','cavities':'cavities','no of batches':'batches','number of batches':'batches','batches':'batches',
-    'preparing date':'preparingDate','date of mixing':'mixingDate','mixing date':'mixingDate','date of pelletizing':'pelletizingDate','pelletizing date':'pelletizingDate',
-    'observations':'observations','findings':'observations','conclusion':'conclusion','recommendation':'conclusion','result':'conclusion'
+    'trial no': 'trialNo', 'trial number': 'trialNo', 'record date': 'recordDate', 'trial date': 'recordDate', 'date': 'recordDate',
+    'purpose': 'purpose', 'trial purpose': 'purpose', 'machine': 'machine', 'machine id': 'machine', 'machine line': 'machine', 'line': 'machine',
+    'number of workers': 'workers', 'no of workers': 'workers', 'workers': 'workers', 'worker count': 'workers',
+    'product': 'product', 'product name': 'product', 'product code': 'formulaCode', 'formula code': 'formulaCode', 'code': 'formulaCode', 'color': 'color',
+    'no of cavities': 'cavities', 'number of cavities': 'cavities', 'cavities': 'cavities', 'no of batches': 'batches', 'number of batches': 'batches', 'batches': 'batches',
+    'preparing date': 'preparingDate', 'date of mixing': 'mixingDate', 'mixing date': 'mixingDate', 'date of pelletizing': 'pelletizingDate', 'pelletizing date': 'pelletizingDate',
+    'observations': 'observations', 'findings': 'observations', 'conclusion': 'conclusion', 'recommendation': 'conclusion', 'result': 'conclusion'
   };
   const field = map[key];
   if (field) target[field] = String(value).trim();
-  else target.extraInformation.push({name, value:String(value).trim()});
+  else target.extraInformation.push({ name, value: String(value).trim() });
 }
 
 function chooseSheet(workbook, department) {
   const names = workbook.SheetNames || [];
-  const preferred = department === 'pipe' ? ['pipes','pipe'] : ['fittings','fitting'];
+  const preferred = department === 'pipe' ? ['pipes', 'pipe'] : ['fittings', 'fitting'];
   let name = names.find(sheet => preferred.includes(normalize(sheet)));
   if (!name) name = names.find(sheet => preferred.some(candidate => normalize(sheet).includes(candidate)));
   if (!name && names.length === 1) name = names[0];
@@ -608,29 +610,29 @@ function chooseSheet(workbook, department) {
 
 function parseExcelWorkbook(workbook, classification) {
   const sheetName = chooseSheet(workbook, classification.department);
-  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header:1, raw:false, defval:''});
-  const headerRowIndex = rows.findIndex(row => row.some(cell => ['parameter','parameter name','field','item'].includes(normalize(cell))) && row.some(cell => /before|normal|trial|after|value type/.test(normalize(cell))));
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: '' });
+  const headerRowIndex = rows.findIndex(row => row.some(cell => ['parameter', 'parameter name', 'field', 'item'].includes(normalize(cell))) && row.some(cell => /before|normal|trial|after|value type/.test(normalize(cell))));
   if (headerRowIndex < 0) throw new Error('Could not find the parameter table headers in the selected sheet.');
   const headers = rows[headerRowIndex];
   const columns = {
-    parameter:findColumn(headers, ['Parameter','Parameter Name','Field','Item']),
-    group:findColumn(headers, ['Group','Category','Section']),
-    unit:findColumn(headers, ['Unit','UOM']),
-    scope:findColumn(headers, ['Applies To','Applicable To','Scope','Department','Used For','Process']),
-    valueType:findColumn(headers, ['Value Type','Data Type','Type']),
-    normal:findColumn(headers, ['Normal / Before Trial','Normal Before Trial','Normal Operation Value','Normal Operation','Before Trial','Before']),
-    trial:findColumn(headers, ['Trial / After Trial','Trial After Trial','Trial Value','After Trial','After'])
+    parameter: findColumn(headers, ['Parameter', 'Parameter Name', 'Field', 'Item']),
+    group: findColumn(headers, ['Group', 'Category', 'Section']),
+    unit: findColumn(headers, ['Unit', 'UOM']),
+    scope: findColumn(headers, ['Applies To', 'Applicable To', 'Scope', 'Department', 'Used For', 'Process']),
+    valueType: findColumn(headers, ['Value Type', 'Data Type', 'Type']),
+    normal: findColumn(headers, ['Normal / Before Trial', 'Normal Before Trial', 'Normal Operation Value', 'Normal Operation', 'Before Trial', 'Before']),
+    trial: findColumn(headers, ['Trial / After Trial', 'Trial After Trial', 'Trial Value', 'After Trial', 'After'])
   };
   if (columns.parameter < 0) throw new Error('The Parameter column is missing.');
 
   const result = {
     sheetName,
-    information:{extraInformation:[]},
-    parameters:[],
-    calculatedRows:[],
-    ignoredBeforeCount:0,
-    skippedCount:0,
-    sourceFile:'',
+    information: { extraInformation: [] },
+    parameters: [],
+    calculatedRows: [],
+    ignoredBeforeCount: 0,
+    skippedCount: 0,
+    sourceFile: '',
     classification
   };
   const cell = (row, index) => index >= 0 ? row[index] : '';
@@ -652,11 +654,11 @@ function parseExcelWorkbook(workbook, classification) {
       continue;
     }
     if (type === 'Calculated') {
-      result.calculatedRows.push({name, unit, group, scope, valueType:type, before:normalValue, after:trialValue, value:normalValue});
+      result.calculatedRows.push({ name, unit, group, scope, valueType: type, before: normalValue, after: trialValue, value: normalValue });
       continue;
     }
 
-    const parameter = {rowId:uid(), libraryId:null, name, unit, group, scope, valueType:type, before:'', after:'', value:''};
+    const parameter = { rowId: uid(), libraryId: null, name, unit, group, scope, valueType: type, before: '', after: '', value: '' };
     if (classification.type === 'operating') {
       if (isBlank(normalValue)) continue;
       parameter.value = String(normalValue).trim();
@@ -677,9 +679,9 @@ function parseExcelWorkbook(workbook, classification) {
 
   const field = classification.type === 'trial' ? 'after' : 'value';
   result.production = (classification.department === 'pipe' && classification.trialStatus !== 'planned') ? {
-    before:classification.type === 'trial' && classification.baselineMode === 'running_with_before' ? calculatePipeOutput(result.parameters, 'before') : null,
-    current:calculatePipeOutput(result.parameters, field),
-    adoptedMethod:''
+    before: classification.type === 'trial' && classification.baselineMode === 'running_with_before' ? calculatePipeOutput(result.parameters, 'before') : null,
+    current: calculatePipeOutput(result.parameters, field),
+    adoptedMethod: ''
   } : null;
   if (result.production?.current?.bySpeed === null) result.production.adoptedMethod = 'cycle';
   if (result.production?.current?.byCycle === null) result.production.adoptedMethod = 'speed';
@@ -691,8 +693,8 @@ function readExcelFile(file) {
   const reader = new FileReader();
   reader.onload = event => {
     try {
-      const workbook = XLSX.read(event.target.result, {type:'array', cellDates:true});
-      pendingImport = parseExcelWorkbook(workbook, {...wizard});
+      const workbook = XLSX.read(event.target.result, { type: 'array', cellDates: true });
+      pendingImport = parseExcelWorkbook(workbook, { ...wizard });
       pendingImport.sourceFile = file.name;
       renderImportPreview();
       $('#importPreviewDialog').showModal();
@@ -726,7 +728,7 @@ function renderImportPreview() {
   const isPlanned = data.classification.type === 'trial' && data.classification.trialStatus === 'planned';
   const mode = data.classification.type === 'trial' ? (isPlanned ? 'Planned (Raw Materials Proof)' : baselineLabels[data.classification.baselineMode]) : 'Normal operating conditions';
   const meta = [
-    ['File',data.sourceFile],['Sheet',data.sheetName],['Record',data.classification.type === 'trial' ? (isPlanned ? 'Planned Trial' : 'Trial') : 'Operating'],['Department',cap(data.classification.department)],['Status/Baseline',mode],['Imported Parameters',String(data.parameters.length)]
+    ['File', data.sourceFile], ['Sheet', data.sheetName], ['Record', data.classification.type === 'trial' ? (isPlanned ? 'Planned Trial' : 'Trial') : 'Operating'], ['Department', cap(data.classification.department)], ['Status/Baseline', mode], ['Imported Parameters', String(data.parameters.length)]
   ];
   const information = Object.entries(info).filter(([key, value]) => key !== 'extraInformation' && !isBlank(value)).map(([key, value]) => `<div class="detail-box"><span>${esc(fieldLabel(key))}</span>${esc(value)}</div>`).join('');
   const warnings = [];
@@ -739,11 +741,11 @@ function renderImportPreview() {
     const both = current.bySpeed !== null && current.byCycle !== null;
     production = `<div class="preview-production"><h4>Pipe Production Rate</h4>${productionCards(current, data.classification.type === 'trial' ? 'Trial / After' : 'Normal Operation')}${both ? `<div class="rate-choice required-choice"><strong>Two valid results were found. Choose the result to adopt:</strong><label><input type="radio" name="previewOutputMethod" value="speed"/> ${current.bySpeed.toFixed(2)} kg/h — Haul-off speed</label><label><input type="radio" name="previewOutputMethod" value="cycle"/> ${current.byCycle.toFixed(2)} kg/h — Cycle / cut time</label><small>Internal difference: ${current.differencePercent}%</small></div>` : ''}</div>`;
   }
-  $('#importPreviewContent').innerHTML = `<div class="detail-grid">${meta.map(([label,value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}</div>${information ? `<h4>Record Information</h4><div class="detail-grid">${information}</div>` : ''}${warnings.length ? `<div class="warning-box">${warnings.map(warning => `<p>${esc(warning)}</p>`).join('')}</div>` : ''}${production}${previewTable(data)}`;
+  $('#importPreviewContent').innerHTML = `<div class="detail-grid">${meta.map(([label, value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}</div>${information ? `<h4>Record Information</h4><div class="detail-grid">${information}</div>` : ''}${warnings.length ? `<div class="warning-box">${warnings.map(warning => `<p>${esc(warning)}</p>`).join('')}</div>` : ''}${production}${previewTable(data)}`;
 }
 
 function fieldLabel(key) {
-  return ({trialNo:'Trial No.',recordDate:'Record Date',formulaCode:'Formula / Product Code',preparingDate:'Preparing Date',mixingDate:'Mixing Date',pelletizingDate:'Pelletizing Date',extraInformation:'Extra Information'})[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, char => char.toUpperCase());
+  return ({ trialNo: 'Trial No.', recordDate: 'Record Date', formulaCode: 'Formula / Product Code', preparingDate: 'Preparing Date', mixingDate: 'Mixing Date', pelletizingDate: 'Pelletizing Date', extraInformation: 'Extra Information' })[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, char => char.toUpperCase());
 }
 
 function toInputDate(value) {
@@ -753,10 +755,10 @@ function toInputDate(value) {
   const match = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
   if (match) {
     const year = match[3].length === 2 ? `20${match[3]}` : match[3];
-    return `${year}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+    return `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
   }
   const date = new Date(text);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0,10);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 }
 
 function confirmImport() {
@@ -770,15 +772,15 @@ function confirmImport() {
 
   const classification = pendingImport.classification;
   $('#recordForm').reset();
-  activeImportMeta = {source:'excel', sourceFile:pendingImport.sourceFile, sheetName:pendingImport.sheetName, baselineMode:classification.type === 'trial' ? classification.baselineMode : '', extraInformation:pendingImport.information.extraInformation || []};
+  activeImportMeta = { source: 'excel', sourceFile: pendingImport.sourceFile, sheetName: pendingImport.sheetName, baselineMode: classification.type === 'trial' ? classification.baselineMode : '', extraInformation: pendingImport.information.extraInformation || [] };
   setClassification(classification);
   const info = pendingImport.information;
   const values = {
-    trialNo:info.trialNo, recordDate:toInputDate(info.recordDate) || new Date().toISOString().slice(0,10), machine:info.machine, product:info.product,
-    formulaCode:info.formulaCode, color:info.color, cavities:info.cavities, batches:info.batches, preparingDate:toInputDate(info.preparingDate), mixingDate:toInputDate(info.mixingDate), pelletizingDate:toInputDate(info.pelletizingDate), purpose:info.purpose, observations:info.observations, conclusion:info.conclusion
+    trialNo: info.trialNo, recordDate: toInputDate(info.recordDate) || new Date().toISOString().slice(0, 10), machine: info.machine, workers: info.workers, product: info.product,
+    formulaCode: info.formulaCode, color: info.color, cavities: info.cavities, batches: info.batches, preparingDate: toInputDate(info.preparingDate), mixingDate: toInputDate(info.mixingDate), pelletizingDate: toInputDate(info.pelletizingDate), purpose: info.purpose, observations: info.observations, conclusion: info.conclusion
   };
   Object.entries(values).forEach(([id, value]) => { if ($('#' + id) && !isBlank(value)) $('#' + id).value = value; });
-  activeParameters = pendingImport.parameters.map(parameter => ({...parameter, rowId:uid()}));
+  activeParameters = pendingImport.parameters.map(parameter => ({ ...parameter, rowId: uid() }));
   activeProduction = pendingImport.production;
   pendingImport = null;
   $('#importPreviewDialog').close();
@@ -789,7 +791,7 @@ function confirmImport() {
 }
 
 function clearForm() {
-  const classification = {type:$('#recordType').value || 'operating', department:$('#department').value || 'pipe', baselineMode:getBaselineMode() || 'running_with_before', trialStatus:$('#trialStatus')?.value || 'completed'};
+  const classification = { type: $('#recordType').value || 'operating', department: $('#department').value || 'pipe', baselineMode: getBaselineMode() || 'running_with_before', trialStatus: $('#trialStatus')?.value || 'completed' };
   prepareBlankRecord(classification);
 }
 
@@ -819,16 +821,18 @@ function saveRecord(event) {
   const finalProduct = rawProduct || (isPlanned ? (trialNo ? `Trial ${trialNo} (Raw Materials Only)` : 'Raw Materials Batch Trial') : 'Standard Product');
   const finalMachine = rawMachine || (isPlanned ? 'Pending Execution' : 'Unassigned Line');
 
+  const previousRecord = editingRecordId ? records.find(r => r.id === editingRecordId) : null;
   const record = {
-    id: editingRecordId || uid(),
-    createdAt: editingRecordId ? (records.find(r => r.id === editingRecordId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    id: uid(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     type: field('recordType'),
     status: isTrial ? (field('trialStatus') || 'completed') : 'completed',
     department: field('department'),
-    date: field('recordDate') || new Date().toISOString().slice(0,10),
+    date: field('recordDate') || new Date().toISOString().slice(0, 10),
     trialNo: trialNo,
     machine: finalMachine,
+    workers: field('workers'),
     product: finalProduct,
     formulaCode: field('formulaCode'),
     color: field('color'),
@@ -841,23 +845,19 @@ function saveRecord(event) {
     baselineMode: (!isPlanned && isTrial) ? getBaselineMode() : '',
     observations: field('observations'),
     conclusion: field('conclusion'),
-    parameters: activeParameters.map(({rowId,...parameter}) => parameter),
-    production: activeProduction ? {...activeProduction, adoptedValue:adoptedProductionValue(activeProduction)} : null,
-    importMeta: activeImportMeta
+    parameters: activeParameters.map(({ rowId, ...parameter }) => parameter),
+    production: activeProduction ? { ...activeProduction, adoptedValue: adoptedProductionValue(activeProduction) } : null,
+    importMeta: activeImportMeta,
+    revisionOf: previousRecord?.id || null,
+    revisionNumber: previousRecord ? (previousRecord.revisionNumber || 1) + 1 : 1
   };
 
-  if (editingRecordId) {
-    const index = records.findIndex(r => r.id === editingRecordId);
-    if (index >= 0) records[index] = record;
-    else records.unshift(record);
-    editingRecordId = null;
-    toast('Record updated successfully');
-  } else {
-    records.unshift(record);
-    toast(isPlanned ? 'Raw materials proof saved successfully' : 'Record saved successfully');
-  }
+  records.unshift(record);
+  editingRecordId = null;
+  toast(previousRecord ? 'New record version saved; previous version preserved' : (isPlanned ? 'Raw materials proof saved successfully' : 'Record saved successfully'));
 
   save();
+  void postRecordToServer(record);
   renderDashboard();
   renderMaterials();
   switchView('records');
@@ -874,18 +874,18 @@ function renderDashboard() {
   $('#statFitting').textContent = fittings;
   $('#statTrials').textContent = trials;
   const percent = number => total ? Math.round(number / total * 100) : 0;
-  [['pipe',pipe],['fitting',fittings],['common',common]].forEach(([key,number]) => { 
-    if ($(`#${key}Bar`)) $(`#${key}Bar`).style.width = percent(number) + '%'; 
-    if ($(`#${key}Percent`)) $(`#${key}Percent`).textContent = percent(number) + '%'; 
+  [['pipe', pipe], ['fitting', fittings], ['common', common]].forEach(([key, number]) => {
+    if ($(`#${key}Bar`)) $(`#${key}Bar`).style.width = percent(number) + '%';
+    if ($(`#${key}Percent`)) $(`#${key}Percent`).textContent = percent(number) + '%';
   });
-  $('#recentRecords').innerHTML = records.slice(0,5).map(record => `<div class="recent-item"><div class="dept-icon">${record.department === 'pipe' ? '⌀' : record.department === 'fittings' ? '⚙' : '◇'}</div><div><h4>${esc(record.product)} — ${esc(record.machine)}</h4><p>${cap(record.department)} · ${record.type === 'trial' ? (record.status === 'planned' ? 'Pending Run / Materials Only' : 'Trial') : 'Operating Conditions'}</p></div><small>${esc(record.date)}</small></div>`).join('') || '<div class="empty">No records yet.</div>';
+  $('#recentRecords').innerHTML = records.slice(0, 5).map(record => `<div class="recent-item"><div class="dept-icon">${record.department === 'pipe' ? '⌀' : record.department === 'fittings' ? '⚙' : '◇'}</div><div><h4>${esc(record.product)} — ${esc(record.machine)}</h4><p>${cap(record.department)} · ${record.type === 'trial' ? (record.status === 'planned' ? 'Pending Run / Materials Only' : 'Trial') : 'Operating Conditions'}</p></div><small>${esc(record.date)}</small></div>`).join('') || '<div class="empty">No records yet.</div>';
 }
 
 function getFilteredRecords() {
   const query = ($('#searchInput')?.value || '').toLowerCase();
   const department = $('#filterDepartment')?.value || 'all';
   const typeFilter = $('#filterType')?.value || 'all';
-  
+
   return records.filter(record => {
     const matchesDept = (department === 'all' || record.department === department);
     let matchesType = true;
@@ -893,7 +893,7 @@ function getFilteredRecords() {
     else if (typeFilter === 'trial') matchesType = record.type === 'trial';
     else if (typeFilter === 'trial-completed') matchesType = record.type === 'trial' && record.status !== 'planned';
     else if (typeFilter === 'trial-planned') matchesType = record.type === 'trial' && record.status === 'planned';
-    
+
     const matchesSearch = [record.machine, record.product, record.formulaCode, record.purpose, record.trialNo, record.status].join(' ').toLowerCase().includes(query);
     return matchesDept && matchesType && matchesSearch;
   });
@@ -908,7 +908,7 @@ function renderRecords() {
     }
     return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div>${esc(record.machine)}</div><div>${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div>${esc(record.formulaCode || '—')}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button><button class="icon-btn delete delete-record" data-id="${record.id}">×</button></div></div>`;
   }).join('') || '<div class="empty">No matching records.</div>'}`;
-  
+
   $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
   $$('.edit-record').forEach(button => button.addEventListener('click', () => editRecord(button.dataset.id)));
   $$('.pdf-record').forEach(button => button.addEventListener('click', () => openPrintSettings(button.dataset.id)));
@@ -992,7 +992,7 @@ function renderMaterials() {
 
   $('#materialsSummaryTable').innerHTML = `<div class="data-head" style="grid-template-columns: 50px 1fr 140px 140px;"><div>#</div><div>Raw Material</div><div>Trials Count</div><div>Total Consumed</div></div>${summary.map((item, idx) => `<div class="data-row" style="grid-template-columns: 50px 1fr 140px 140px;"><div>${idx + 1}</div><div><strong>${esc(item.name)}</strong></div><div>${item.count}</div><div><span class="badge trial">${item.totalQty.toFixed(2)} ${esc(item.unit)}</span></div></div>`).join('') || '<div class="empty">No trial formulation materials recorded yet.</div>'}`;
 
-  $('#materialsDetailedTable').innerHTML = `<div class="data-head" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>#</div><div>Date</div><div>Trial No</div><div>Status</div><div>Product</div><div>Material</div><div>Qty/Batch</div><div>Batches</div><div>Total Qty</div></div>${filteredDetails.map((item, idx) => `<div class="data-row" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>${idx + 1}</div><div>${esc(item.date)}</div><div><span class="badge trial">${esc(item.trialNo)}</span></div><div><small style="color:${item.status==='Pending Run'?'#f59e0b':'inherit'}">${esc(item.status)}</small></div><div>${esc(item.product)}</div><div><strong>${esc(item.material)}</strong></div><div>${item.unitQty} ${esc(item.unit)}</div><div>${item.batches}</div><div><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></div></div>`).join('') || '<div class="empty">No matching material consumption entries.</div>'}`;
+  $('#materialsDetailedTable').innerHTML = `<div class="data-head" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>#</div><div>Date</div><div>Trial No</div><div>Status</div><div>Product</div><div>Material</div><div>Qty/Batch</div><div>Batches</div><div>Total Qty</div></div>${filteredDetails.map((item, idx) => `<div class="data-row" style="grid-template-columns: 45px 95px 95px 95px 1fr 1fr 85px 75px 95px;"><div>${idx + 1}</div><div>${esc(item.date)}</div><div><span class="badge trial">${esc(item.trialNo)}</span></div><div><small style="color:${item.status === 'Pending Run' ? '#f59e0b' : 'inherit'}">${esc(item.status)}</small></div><div>${esc(item.product)}</div><div><strong>${esc(item.material)}</strong></div><div>${item.unitQty} ${esc(item.unit)}</div><div>${item.batches}</div><div><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></div></div>`).join('') || '<div class="empty">No matching material consumption entries.</div>'}`;
 }
 
 function printMaterialsReport() {
@@ -1048,15 +1048,13 @@ function importJsonFile(file) {
     try {
       const data = JSON.parse(event.target.result);
       if (!Array.isArray(data)) throw new Error('Invalid JSON format: array expected.');
-      const seen = new Set(records.map(r => r.id));
       let added = 0;
       for (const item of data) {
         if (!item || !item.id) continue;
-        if (!seen.has(item.id)) {
-          records.push(item);
-          seen.add(item.id);
-          added += 1;
-        }
+        const imported = { ...item, id: uid(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), revisionOf: item.id, revisionNumber: (item.revisionNumber || 1) + 1 };
+        records.push(imported);
+        void postRecordToServer(imported);
+        added += 1;
       }
       save();
       renderDashboard();
@@ -1070,21 +1068,22 @@ function importJsonFile(file) {
   reader.readAsText(file);
 }
 
-function recordParameterTable(record, printable = false, hideOptions = {hideFormulation: false, hiddenParams: [], hiddenMeta: []}) {
+function recordParameterTable(record, printable = false, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
   const trial = record.type === 'trial';
   const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
   const blank = printable ? '-' : '—';
-  
+  if (!(record.parameters || []).length) return '';
+
   let header = '';
   if (printable) {
     header = withBefore ? '<th>Normal / Before Trial</th><th>Trial / After Trial</th>' : `<th>${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th>`;
   } else {
     header = withBefore ? '<th>Normal / Before Trial</th><th>Trial / After Trial</th>' : `<th>${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th>`;
   }
-  
+
   const displayParameters = (record.parameters || []).filter(parameter => {
     if (printable) {
-      if (hideOptions.hideFormulation && normalize(parameter.group).includes('formul')) return false;
+      if (hideOptions.hideFormulation && isFormulationParameter(parameter)) return false;
       if (hideOptions.hiddenParams.includes(parameter.name)) return false;
     }
     if (!withBefore) return true;
@@ -1106,7 +1105,7 @@ function recordParameterTable(record, printable = false, hideOptions = {hideForm
     } else {
       values = `<td>${esc(trial ? (parameter.after || parameter.value || blank) : (parameter.value || blank))}</td>`;
     }
-    
+
     const unitText = parameter.unit ? ` (${parameter.unit})` : '';
     const fullName = `${parameter.name}${unitText}`;
 
@@ -1116,21 +1115,44 @@ function recordParameterTable(record, printable = false, hideOptions = {hideForm
       return `<tr><td>${esc(parameter.group || '')}</td><td>${esc(parameter.name)}</td><td>${esc(parameter.unit || '')}</td>${values}</tr>`;
     }
   }).join('');
-  
+
   const theadHTML = printable ? `<tr><th>Group</th><th>Parameter</th>${header}</tr>` : `<tr><th>Group</th><th>Parameter</th><th>Unit</th>${header}</tr>`;
   return `<table class="${printable ? 'print-table' : 'detail-table'}"><thead>${theadHTML}</thead><tbody>${rows}</tbody></table>`;
+}
+
+function isFormulationParameter(parameter) {
+  return normalize(parameter.group).includes('formul') || isFormulaMaterial(parameter.group, parameter.name);
+}
+
+function reportParameterSection(record, title, predicate, hideOptions) {
+  const parameters = (record.parameters || []).filter(predicate);
+  if (!parameters.length) return '';
+  return `<section class="print-section"><h3>${esc(title)}</h3>${recordParameterTable({ ...record, parameters }, true, hideOptions)}</section>`;
+}
+
+function reportParameterSections(record, hideOptions) {
+  const isFormulation = parameter => isFormulationParameter(parameter);
+  const isTemperature = parameter => /temperatures?|heating|cooling|zone|die|adapter|nozzle|oil/.test(normalize(parameter.group + ' ' + parameter.name));
+  const isTrialResult = parameter => /result|outcome|quality|defect|observation|calculated/.test(normalize(parameter.group + ' ' + parameter.name));
+  const isOperating = parameter => !isFormulation(parameter) && !isTemperature(parameter) && !isTrialResult(parameter);
+  return [
+    reportParameterSection(record, 'Formulation', isFormulation, hideOptions),
+    reportParameterSection(record, 'Operating Parameters', isOperating, hideOptions),
+    reportParameterSection(record, 'Temperatures', isTemperature, hideOptions),
+    reportParameterSection(record, 'Trial Results', isTrialResult, hideOptions)
+  ].join('');
 }
 
 function recordMeta(record) {
   const trial = record.type === 'trial';
   const isPlanned = trial && record.status === 'planned';
   const items = [
-    ['Type',trial ? (isPlanned ? 'Planned Trial (Raw Materials Proof)' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Trial Values Only')) : 'Operating Conditions'],
-    ['Status',trial ? (isPlanned ? 'Pending Run / Materials Only' : 'Executed / Completed') : 'Active'],
-    ['Department',cap(record.department)],['Date',record.date],['Trial No.',record.trialNo],['Machine / Line',record.machine],['Product',record.product],['Formula Code',record.formulaCode],['Color',record.color],['Cavities',record.cavities],['Batches',record.batches],['Preparing Date',record.preparingDate],['Mixing Date',record.mixingDate],['Pelletizing Date',record.pelletizingDate]
+    ['Type', trial ? (isPlanned ? 'Planned Trial (Raw Materials Proof)' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Trial Values Only')) : 'Operating Conditions'],
+    ['Status', trial ? (isPlanned ? 'Pending Run / Materials Only' : 'Executed / Completed') : 'Active'],
+    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Number of Workers', record.workers], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Preparing Date', record.preparingDate], ['Mixing Date', record.mixingDate], ['Pelletizing Date', record.pelletizingDate]
   ];
-  if (trial && !isPlanned) items.splice(2,0,['Before Trial Status',baselineLabels[record.baselineMode || 'running_with_before']]);
-  return items.filter(([,value]) => !isBlank(value));
+  if (trial && !isPlanned) items.splice(2, 0, ['Before Trial Status', baselineLabels[record.baselineMode || 'running_with_before']]);
+  return items.filter(([, value]) => !isBlank(value));
 }
 
 function productionHtml(record, printable = false) {
@@ -1152,15 +1174,15 @@ function openRecord(id) {
   $('#dialogTitle').textContent = `${record.product} — ${record.machine}`;
   const meta = recordMeta(record);
   const extras = record.importMeta?.extraInformation || [];
-  $('#dialogContent').innerHTML = `<div class="detail-grid">${meta.map(([label,value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}${extras.map(item => `<div class="detail-box"><span>${esc(item.name)}</span>${esc(item.value)}</div>`).join('')}</div>${productionHtml(record)}<div class="notes-box"><h4>${esc(reportPurposeLabel(record))}</h4><p>${esc(record.purpose || 'Not specified')}</p></div>${recordParameterTable(record)}<div class="notes-box"><h4>Observations</h4><p>${esc(record.observations || '—')}</p></div><div class="notes-box"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '—')}</p></div>`;
+  $('#dialogContent').innerHTML = `<div class="detail-grid">${meta.map(([label, value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}${extras.map(item => `<div class="detail-box"><span>${esc(item.name)}</span>${esc(item.value)}</div>`).join('')}</div>${productionHtml(record)}<div class="notes-box"><h4>${esc(reportPurposeLabel(record))}</h4><p>${esc(record.purpose || 'Not specified')}</p></div>${recordParameterTable(record)}<div class="notes-box"><h4>Observations</h4><p>${esc(record.observations || '—')}</p></div><div class="notes-box"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '—')}</p></div>`;
   $('#recordDialog').showModal();
 }
 
-function buildPrintDocument(record, hideOptions = {hideFormulation: false, hiddenParams: [], hiddenMeta: []}) {
+function buildPrintDocument(record, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
   const meta = recordMeta(record).filter(([label]) => !hideOptions.hiddenMeta.includes(label));
   const purposeLabel = reportPurposeLabel(record);
   const generatedAt = new Date().toLocaleString();
-  
+
   const showPurpose = !hideOptions.hiddenMeta.includes('Purpose');
   const showObservations = !hideOptions.hiddenMeta.includes('Observations');
   const showConclusion = !hideOptions.hiddenMeta.includes('Conclusion');
@@ -1202,7 +1224,9 @@ function buildPrintDocument(record, hideOptions = {hideFormulation: false, hidde
     .print-note h4 { margin: 0 0 3px; font-size: 10px; color: #1e40af; text-transform: uppercase; font-weight: 800; }
     .print-note p { margin: 0; white-space: pre-wrap; line-height: 1.25; font-size: 9.5px; }
     .footer { margin-top: 8px; color: #64748b; font-size: 8.5px; text-align: right; font-weight: 600; }
-  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} - ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label,value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${recordParameterTable(record, true, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
+  .print-section { margin-top: 9px; break-inside: avoid; }
+    .print-section h3 { margin: 9px 0 3px; padding: 5px 8px; border-left: 4px solid #2563eb; background: #eff6ff; color: #1e40af; font-size: 11px; text-transform: uppercase; }
+  </style></head><body><main id="reportRoot" class="report-root"><header><h1>Process Conditions &amp; Trial Report</h1><h2>${esc(record.product)} - ${esc(record.machine)}</h2></header><section class="print-purpose"><span>${esc(purposeLabel)}</span><strong>${esc(record.purpose || 'Not specified')}</strong></section><div class="print-meta">${meta.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${productionHtml(record, true)}${reportParameterSections(record, hideOptions)}<section class="print-notes" style="display: ${(showObservations || showConclusion) ? 'grid' : 'none'};"><div class="print-note" style="display: ${showObservations ? 'block' : 'none'};"><h4>Observations</h4><p>${esc(record.observations || '-')}</p></div><div class="print-note" style="display: ${showConclusion ? 'block' : 'none'};"><h4>Conclusion / Recommendation</h4><p>${esc(record.conclusion || '-')}</p></div></section><div class="footer">Generated ${esc(generatedAt)}</div></main><script>
     function fitPage() {
       setTimeout(() => window.print(), 250);
     }
@@ -1210,7 +1234,7 @@ function buildPrintDocument(record, hideOptions = {hideFormulation: false, hidde
   <\/script></body></html>`;
 }
 
-function printRecord(id, hideOptions = {hideFormulation: false, hiddenParams: [], hiddenMeta: []}) {
+function printRecord(id, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
   const record = records.find(item => item.id === id);
   if (!record) return;
   const reportWindow = window.open('', '_blank', 'width=1100,height=800');
@@ -1233,17 +1257,17 @@ $('#wizardBack')?.addEventListener('click', wizardBack);
 $('#wizardContent')?.addEventListener('click', event => { const choice = event.target.closest('[data-choice]'); if (choice) handleWizardChoice(choice.dataset.choice); });
 $('#addParameterBtn')?.addEventListener('click', () => { addParameter(library.find(parameter => parameter.id === $('#parameterPicker').value)); renderParameterTable(); });
 $('#loadTemplateBtn')?.addEventListener('click', () => loadTemplate(true));
-$('#addCustomBtn')?.addEventListener('click', () => { const name = prompt('Custom parameter name:'); if (!name) return; const unit = prompt('Unit (optional):') || ''; activeParameters.push({rowId:uid(),libraryId:null,name,unit,group:'Custom',valueType:'Comparison',scope:$('#department').value,before:'',after:'',value:''}); renderParameterTable(); });
-$('#importExcelBtn')?.addEventListener('click', () => { wizard = {step:'source',type:$('#recordType').value,department:$('#department').value,baselineMode:getBaselineMode() || 'running_with_before',trialStatus:$('#trialStatus')?.value || 'completed'}; $('#excelFileInput').value = ''; $('#excelFileInput').click(); });
+$('#addCustomBtn')?.addEventListener('click', () => { const name = prompt('Custom parameter name:'); if (!name) return; const unit = prompt('Unit (optional):') || ''; activeParameters.push({ rowId: uid(), libraryId: null, name, unit, group: 'Custom', valueType: 'Comparison', scope: $('#department').value, before: '', after: '', value: '' }); renderParameterTable(); });
+$('#importExcelBtn')?.addEventListener('click', () => { wizard = { step: 'source', type: $('#recordType').value, department: $('#department').value, baselineMode: getBaselineMode() || 'running_with_before', trialStatus: $('#trialStatus')?.value || 'completed' }; $('#excelFileInput').value = ''; $('#excelFileInput').click(); });
 $('#excelFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) readExcelFile(file); });
 $('#closeImportPreview')?.addEventListener('click', () => $('#importPreviewDialog').close());
 $('#cancelImportBtn')?.addEventListener('click', () => { pendingImport = null; $('#importPreviewDialog').close(); });
 $('#confirmImportBtn')?.addEventListener('click', confirmImport);
-$('#recordType')?.addEventListener('change', () => { 
-  if ($('#recordType').value === 'trial' && !wizard.baselineMode) wizard.baselineMode = 'running_with_before'; 
-  activeImportMeta = {...(activeImportMeta || {}), baselineMode:$('#recordType').value === 'trial' ? wizard.baselineMode : ''}; 
-  renderModeSummary(); 
-  refreshCalculations(); 
+$('#recordType')?.addEventListener('change', () => {
+  if ($('#recordType').value === 'trial' && !wizard.baselineMode) wizard.baselineMode = 'running_with_before';
+  activeImportMeta = { ...(activeImportMeta || {}), baselineMode: $('#recordType').value === 'trial' ? wizard.baselineMode : '' };
+  renderModeSummary();
+  refreshCalculations();
 });
 $('#trialStatus')?.addEventListener('change', () => {
   wizard.trialStatus = $('#trialStatus').value;
@@ -1253,26 +1277,26 @@ $('#trialStatus')?.addEventListener('change', () => {
 $('#department')?.addEventListener('change', () => { wizard.department = $('#department').value; loadTemplate(false); renderModeSummary(); refreshCalculations(); });
 $('#clearFormBtn')?.addEventListener('click', clearForm);
 $('#recordForm')?.addEventListener('submit', saveRecord);
-['searchInput','filterDepartment','filterType'].forEach(id => $('#' + id)?.addEventListener('input', renderRecords));
+['searchInput', 'filterDepartment', 'filterType'].forEach(id => $('#' + id)?.addEventListener('input', renderRecords));
 $('#materialSearchInput')?.addEventListener('input', renderMaterials);
 $('#printMaterialsBtn')?.addEventListener('click', printMaterialsReport);
 $('#closeDialog')?.addEventListener('click', () => $('#recordDialog').close());
-$('#dialogPdfBtn')?.addEventListener('click', () => printRecord(selectedRecordId));
-$('#exportBtn')?.addEventListener('click', () => { const blob = new Blob([JSON.stringify(records,null,2)], {type:'application/json'}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `process-control-records-${new Date().toISOString().slice(0,10)}.json`; link.click(); URL.revokeObjectURL(link.href); });
+$('#dialogPdfBtn')?.addEventListener('click', () => openPrintSettings(selectedRecordId));
+$('#exportBtn')?.addEventListener('click', () => { const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `process-control-records-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(link.href); });
 $('#importJsonBtn')?.addEventListener('click', () => { $('#jsonFileInput').value = ''; $('#jsonFileInput').click(); });
 $('#jsonFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) importJsonFile(file); });
-$('#parameterLibraryForm')?.addEventListener('submit', event => { event.preventDefault(); library.push({id:uid(),name:$('#libraryName').value.trim(),unit:$('#libraryUnit').value.trim(),department:$('#libraryDepartment').value,group:'Custom'}); saveLibrary(); event.target.reset(); renderLibrary(); renderPicker(); toast('Parameter added'); });
+$('#parameterLibraryForm')?.addEventListener('submit', event => { event.preventDefault(); library.push({ id: uid(), name: $('#libraryName').value.trim(), unit: $('#libraryUnit').value.trim(), department: $('#libraryDepartment').value, group: 'Custom' }); saveLibrary(); event.target.reset(); renderLibrary(); renderPicker(); toast('Parameter added'); });
 
 applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 fetchServerRecords();
-if ($('#recordDate')) $('#recordDate').value = new Date().toISOString().slice(0,10);
-activeImportMeta = {source:'manual',baselineMode:''};
-setClassification({type:'operating',department:'pipe',baselineMode:'running_with_before',trialStatus:'completed'});
+if ($('#recordDate')) $('#recordDate').value = new Date().toISOString().slice(0, 10);
+activeImportMeta = { source: 'manual', baselineMode: '' };
+setClassification({ type: 'operating', department: 'pipe', baselineMode: 'running_with_before', trialStatus: 'completed' });
 loadTemplate(false);
 renderProductionPanel();
 renderDashboard();
 
-window.__processControlTest = {parseExcelWorkbook, calculatePipeOutput, difference, normalizeScope};
+window.__processControlTest = { parseExcelWorkbook, calculatePipeOutput, difference, normalizeScope };
 
 let currentPrintRecordId = null;
 
@@ -1282,34 +1306,28 @@ function openPrintSettings(id) {
   currentPrintRecordId = id;
 
   const metaItems = recordMeta(record);
-  const hasFormulation = record.parameters.some(p => normalize(p.group).includes('formul'));
-  const otherParams = record.parameters.filter(p => !normalize(p.group).includes('formul'));
+  const parameters = record.parameters || [];
+  const hasFormulation = parameters.some(isFormulationParameter);
+  const otherParams = parameters.filter(p => !isFormulationParameter(p));
 
   const trial = record.type === 'trial';
   const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
 
-  const displayParameters = otherParams.filter(parameter => {
-    if (!withBefore) return true;
-    const a = String(parameter.before || '').trim();
-    const b = String(parameter.after || parameter.value || '').trim();
-    if (a === '' && b === '') return false;
-    if (a === '' && b !== '') return true;
-    return a !== b;
-  });
+  const displayParameters = otherParams;
 
   let html = '<div style="display:grid; gap:12px;">';
 
   html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
   html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header &amp; Information Fields</strong>';
   html += '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">';
-  
+
   metaItems.forEach(([label, value]) => {
     html += `<label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
                <input type="checkbox" class="hide-meta-cb" value="${esc(label)}" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
                <span style="font-size:12px; color:var(--text);">${esc(label)}: <strong style="color:var(--muted);">${esc(value)}</strong></span>
              </label>`;
   });
-  
+
   ['Purpose', 'Observations', 'Conclusion'].forEach(item => {
     html += `<label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
                <input type="checkbox" class="hide-meta-cb" value="${esc(item)}" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
@@ -1333,19 +1351,26 @@ function openPrintSettings(id) {
   displayParameters.forEach(p => {
     html += `<label style="display:flex; gap:12px; align-items:center; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
                <input type="checkbox" class="hide-param-cb" value="${esc(p.name)}" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
-               <div><strong style="display:block; color:var(--text); font-size:12.5px;">${esc(p.name)} ${p.unit ? '('+p.unit+')' : ''}</strong><small style="color:var(--muted); font-size:11px;">${esc(p.group)}</small></div>
+               <div><strong style="display:block; color:var(--text); font-size:12.5px;">${esc(p.name)} ${p.unit ? '(' + p.unit + ')' : ''}</strong><small style="color:var(--muted); font-size:11px;">${esc(p.group)}</small></div>
              </label>`;
   });
 
   html += '</div></div></div>';
 
-  document.querySelector('#printSettingsContent').innerHTML = html || '<div class="empty">No specific items to hide for this record.</div>';
-  document.querySelector('#printSettingsDialog').showModal();
+  const content = document.querySelector('#printSettingsContent');
+  const dialog = document.querySelector('#printSettingsDialog');
+  if (!content || !dialog) { toast('PDF settings dialog is unavailable.'); return; }
+  content.innerHTML = html || '<div class="empty">No specific items to hide for this record.</div>';
+  dialog.showModal();
 }
 
 document.addEventListener('click', e => {
-  if (e.target.closest('#closePrintSettings') || e.target.closest('#cancelPrintBtn')) {
+  if (e.target.closest('#closePrintSettings')) {
     document.querySelector('#printSettingsDialog')?.close();
+  }
+  if (e.target.closest('#cancelPrintBtn')) {
+    document.querySelector('#printSettingsDialog')?.close();
+    printRecord(currentPrintRecordId);
   }
 });
 
