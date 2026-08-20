@@ -55,7 +55,7 @@ async function saveAllRecordsToServer() {
       console.warn('Sync failed for item:', record.id);
     }
   }
-  toast(`✔ All ${records.length} records safely saved & synced!`);
+  toast(`All ${records.length} records safely saved and synced!`);
 }
 
 const STORAGE_KEY = 'processControlRecordsV2';
@@ -76,13 +76,13 @@ const defaultLibrary = [
   ['calciumstearate', 'Calcium Stearate', 'kg', 'common', 'Formula'],
   ['productweight', 'Product Weight', 'kg', 'common', 'Product'],
   ['cycle', 'Cycle / Cut Time', 's', 'common', 'Process'],
-  ['meltTemp', 'Melt Temperature', '°C', 'common', 'Temperature'],
-  ['zone1', 'Zone 1 Set / Actual', '°C', 'common', 'Temperature'],
-  ['zone2', 'Zone 2 Set / Actual', '°C', 'common', 'Temperature'],
-  ['zone3', 'Zone 3 Set / Actual', '°C', 'common', 'Temperature'],
-  ['zone4', 'Zone 4 Set / Actual', '°C', 'common', 'Temperature'],
-  ['zone5', 'Zone 5 Set / Actual', '°C', 'common', 'Temperature'],
-  ['zone6', 'Zone 6 Set / Actual', '°C', 'common', 'Temperature'],
+  ['meltTemp', 'Melt Temperature', 'C', 'common', 'Temperature'],
+  ['zone1', 'Zone 1 Set / Actual', 'C', 'common', 'Temperature'],
+  ['zone2', 'Zone 2 Set / Actual', 'C', 'common', 'Temperature'],
+  ['zone3', 'Zone 3 Set / Actual', 'C', 'common', 'Temperature'],
+  ['zone4', 'Zone 4 Set / Actual', 'C', 'common', 'Temperature'],
+  ['zone5', 'Zone 5 Set / Actual', 'C', 'common', 'Temperature'],
+  ['zone6', 'Zone 6 Set / Actual', 'C', 'common', 'Temperature'],
   ['motorload', 'Motor Load', 'A / %', 'common', 'Machine'],
   ['screwspeedcommon', 'Screw Speed', 'rpm', 'common', 'Machine'],
   ['meltpressure', 'Melt Pressure', 'bar', 'common', 'Machine'],
@@ -94,8 +94,8 @@ const defaultLibrary = [
   ['holdp1', 'Hold Pressure P1', 'bar / s', 'fittings', 'Injection'],
   ['holdp2', 'Hold Pressure P2', 'bar / s', 'fittings', 'Injection'],
   ['runnerweight', 'Runner Weight', 'kg', 'fittings', 'Product'],
-  ['nozzle', 'Nozzle Temp Set / Actual', '°C', 'fittings', 'Temperature'],
-  ['oiltemp', 'Oil Temperature', '°C', 'fittings', 'Machine'],
+  ['nozzle', 'Nozzle Temp Set / Actual', 'C', 'fittings', 'Temperature'],
+  ['oiltemp', 'Oil Temperature', 'C', 'fittings', 'Machine'],
   ['injectionspeed', 'Injection Speed', '%', 'fittings', 'Injection'],
   ['backpressure', 'Back Pressure', 'bar', 'fittings', 'Injection'],
   ['clampingforce', 'Clamping Force', 'T', 'fittings', 'Machine'],
@@ -104,10 +104,10 @@ const defaultLibrary = [
   ['hauloff', 'Haul-off Speed', 'm/min', 'pipe', 'Extrusion'],
   ['output', 'Output', 'kg/h', 'pipe', 'Extrusion'],
   ['vacuum', 'Vacuum Pressure', 'bar', 'pipe', 'Sizing & Cooling'],
-  ['waterTemp1', 'Cooling Tank 1 Water Temp', '°C', 'pipe', 'Sizing & Cooling'],
-  ['waterTemp2', 'Cooling Tank 2 Water Temp', '°C', 'pipe', 'Sizing & Cooling'],
-  ['dieTemp', 'Die Head Temperature', '°C', 'pipe', 'Temperature'],
-  ['adapterTemp', 'Adapter Temperature', '°C', 'pipe', 'Temperature'],
+  ['waterTemp1', 'Cooling Tank 1 Water Temp', 'C', 'pipe', 'Sizing & Cooling'],
+  ['waterTemp2', 'Cooling Tank 2 Water Temp', 'C', 'pipe', 'Sizing & Cooling'],
+  ['dieTemp', 'Die Head Temperature', 'C', 'pipe', 'Temperature'],
+  ['adapterTemp', 'Adapter Temperature', 'C', 'pipe', 'Temperature'],
   ['od', 'Outside Diameter', 'mm', 'pipe', 'Product'],
   ['thickness', 'Wall Thickness', 'mm', 'pipe', 'Product'],
   ['meterweight', 'Meter Weight', 'kg/m', 'pipe', 'Product'],
@@ -124,8 +124,8 @@ const templates = {
 };
 
 const baselineLabels = {
-  running_with_before: 'Running — previous conditions available',
-  running_no_before: 'Running — previous conditions not available',
+  running_with_before: 'Running - previous conditions available',
+  running_no_before: 'Running - previous conditions not available',
   machine_stopped: 'Machine stopped before the trial'
 };
 
@@ -307,7 +307,7 @@ function renderWizard() {
     content.innerHTML = `<p class="wizard-lead">Prove raw materials consumption even before running the trial.</p><div class="wizard-grid baseline-grid">${wizardChoice('completed', 'Executed / Tested on Machine', 'The trial was run on the line; operating conditions, speeds and results are ready.', 'OK')}${wizardChoice('planned', 'Raw Materials Prepared Only (Proof of Materials)', 'Materials are batched & mixed; machine has not run yet. Log raw materials now to prevent inventory shortage.', 'MAT')}</div>`;
   } else if (wizard.step === 'baseline') {
     $('#wizardTitle').textContent = 'What was the machine status before the trial?';
-    content.innerHTML = `<p class="wizard-lead">Controls how before & after conditions are compared.</p><div class="wizard-grid baseline-grid">${wizardChoice('running_with_before', 'Running — previous conditions available', 'Compare Normal/Before vs Trial/After and calculate differences.', 'A')}${wizardChoice('running_no_before', 'Running — no previous conditions available', 'Import Trial / After values only; Before is ignored.', 'B')}${wizardChoice('machine_stopped', 'Machine was stopped before the trial', 'Import startup / trial values only.', 'C')}</div>`;
+    content.innerHTML = `<p class="wizard-lead">Controls how before & after conditions are compared.</p><div class="wizard-grid baseline-grid">${wizardChoice('running_with_before', 'Running - previous conditions available', 'Compare Normal/Before vs Trial/After and calculate differences.', 'A')}${wizardChoice('running_no_before', 'Running - no previous conditions available', 'Import Trial / After values only; Before is ignored.', 'B')}${wizardChoice('machine_stopped', 'Machine was stopped before the trial', 'Import startup / trial values only.', 'C')}</div>`;
   } else {
     $('#wizardTitle').textContent = 'How will you enter the record?';
     content.innerHTML = `<p class="wizard-lead">Excel import populates the form for review; it never saves automatically.</p><div class="wizard-grid">${wizardChoice('excel', 'Import from Excel', 'Read the workbook sheet and show a full preview.', 'X')}${wizardChoice('manual', 'Manual Entry', 'Open a form preloaded with standard parameters.', 'M')}</div>`;
@@ -384,9 +384,9 @@ function renderModeSummary() {
     $('#trialStatusWrapper').style.display = trial ? 'grid' : 'none';
   }
 
-  let valueRule = !trial ? 'Use Normal / Before Trial values.' : isPlanned ? 'Raw Materials Prepared Only — formulation recorded for audit; operating parameters will be filled upon machine run.' : mode === 'running_with_before' ? 'Use Before and After values and calculate differences.' : 'Use Trial / After values only; Before values are ignored.';
+  let valueRule = !trial ? 'Use Normal / Before Trial values.' : isPlanned ? 'Raw Materials Prepared Only - formulation recorded for audit; operating parameters will be filled upon machine run.' : mode === 'running_with_before' ? 'Use Before and After values and calculate differences.' : 'Use Trial / After values only; Before values are ignored.';
 
-  $('#recordModeSummary').innerHTML = `<div><strong>${trial ? (isPlanned ? 'Trial (Raw Materials Proof Only)' : 'Executed Trial') : 'Operating Conditions'} · ${cap($('#department').value)}</strong><small>${trial ? (isPlanned ? 'Materials Logged — Machine run pending' : baselineLabels[mode]) : 'Normal production record'} — ${valueRule}</small></div><button class="text-btn" id="changeModeBtn" type="button">Change</button>`;
+  $('#recordModeSummary').innerHTML = `<div><strong>${trial ? (isPlanned ? 'Trial (Raw Materials Proof Only)' : 'Executed Trial') : 'Operating Conditions'} - ${cap($('#department').value)}</strong><small>${trial ? (isPlanned ? 'Materials Logged - Machine run pending' : baselineLabels[mode]) : 'Normal production record'} - ${valueRule}</small></div><button class="text-btn" id="changeModeBtn" type="button">Change</button>`;
   $('#changeModeBtn').addEventListener('click', () => openNewRecordWizard({ type: $('#recordType').value, department: $('#department').value, baselineMode: mode, trialStatus: $('#trialStatus')?.value }));
   if ($('#parameterHelp')) $('#parameterHelp').textContent = valueRule;
   updateFieldRequirements();
@@ -474,7 +474,7 @@ function loadTemplate(showToast = true) {
 function difference(before, after) {
   const a = String(before || '').trim();
   const b = String(after || '').trim();
-  if (!a && !b) return { label: '—', kind: 'neutral' };
+  if (!a && !b) return { label: '-', kind: 'neutral' };
   if (!a && b) return { label: 'Added', kind: 'added' };
   if (a && !b) return { label: 'Removed', kind: 'removed' };
   const na = parseNumber(a), nb = parseNumber(b);
@@ -509,7 +509,7 @@ function renderParameterTable() {
     } else {
       values = `<input class="param-value wide-value" value="${esc(parameter.value || '')}" placeholder="Normal / Operating Value" ${calculated ? 'readonly' : ''}/>`;
     }
-    return `<div class="param-row ${rowClass}" data-id="${parameter.rowId}"><div class="param-label"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.group || '')} · ${esc(parameter.unit || 'No unit')}${calculated ? ' · Calculated' : ''}</small></div><input class="param-unit" value="${esc(parameter.unit || '')}" placeholder="Unit"/>${values}<button type="button" class="remove-btn">x</button></div>`;
+    return `<div class="param-row ${rowClass}" data-id="${parameter.rowId}"><div class="param-label"><strong>${esc(parameter.name)}</strong><small>${esc(parameter.group || '')} - ${esc(parameter.unit || 'No unit')}${calculated ? ' - Calculated' : ''}</small></div><input class="param-unit" value="${esc(parameter.unit || '')}" placeholder="Unit"/>${values}<button type="button" class="remove-btn">x</button></div>`;
   }).join('');
 
   $$('.param-row').forEach(row => {
@@ -608,7 +608,7 @@ function renderProductionPanel() {
   }
   const both = current.bySpeed !== null && current.byCycle !== null;
   panel.classList.remove('hidden');
-  panel.innerHTML = `<div class="production-head"><div><span class="eyebrow">PIPE PRODUCTION RATE</span><h3>Calculated Production Output</h3></div>${both ? `<span class="difference changed">Difference ${current.differencePercent}%</span>` : ''}</div>${activeProduction.before ? productionCards(activeProduction.before, 'Normal / Before Trial') : ''}${productionCards(current, $('#recordType').value === 'trial' ? 'Trial / After' : 'Normal Operation')}${both ? `<div class="rate-choice"><strong>Which result do you want to adopt?</strong><label><input type="radio" name="activeOutputMethod" value="speed" ${activeProduction.adoptedMethod === 'speed' ? 'checked' : ''}/> ${current.bySpeed.toFixed(2)} kg/h — Haul-off speed</label><label><input type="radio" name="activeOutputMethod" value="cycle" ${activeProduction.adoptedMethod === 'cycle' ? 'checked' : ''}/> ${current.byCycle.toFixed(2)} kg/h — Cycle / cut time</label></div>` : ''}`;
+  panel.innerHTML = `<div class="production-head"><div><span class="eyebrow">PIPE PRODUCTION RATE</span><h3>Calculated Production Output</h3></div>${both ? `<span class="difference changed">Difference ${current.differencePercent}%</span>` : ''}</div>${activeProduction.before ? productionCards(activeProduction.before, 'Normal / Before Trial') : ''}${productionCards(current, $('#recordType').value === 'trial' ? 'Trial / After' : 'Normal Operation')}${both ? `<div class="rate-choice"><strong>Which result do you want to adopt?</strong><label><input type="radio" name="activeOutputMethod" value="speed" ${activeProduction.adoptedMethod === 'speed' ? 'checked' : ''}/> ${current.bySpeed.toFixed(2)} kg/h - Haul-off speed</label><label><input type="radio" name="activeOutputMethod" value="cycle" ${activeProduction.adoptedMethod === 'cycle' ? 'checked' : ''}/> ${current.byCycle.toFixed(2)} kg/h - Cycle / cut time</label></div>` : ''}`;
   $$('input[name="activeOutputMethod"]').forEach(input => input.addEventListener('change', event => activeProduction.adoptedMethod = event.target.value));
 }
 
@@ -813,9 +813,9 @@ function previewTable(data) {
     let values;
     if (withBefore) {
       const diff = difference(parameter.before, parameter.after);
-      values = `<td>${esc(parameter.before || '—')}</td><td>${esc(parameter.after || '—')}</td><td><span class="difference ${diff.kind}">${esc(diff.label)}</span></td>`;
+      values = `<td>${esc(parameter.before || '-')}</td><td>${esc(parameter.after || '-')}</td><td><span class="difference ${diff.kind}">${esc(diff.label)}</span></td>`;
     } else values = `<td>${esc(trial ? parameter.after : parameter.value)}</td>`;
-    return `<tr><td>${esc(parameter.group)}</td><td>${esc(parameter.name)}</td><td>${esc(parameter.unit || '—')}</td>${values}</tr>`;
+    return `<tr><td>${esc(parameter.group)}</td><td>${esc(parameter.name)}</td><td>${esc(parameter.unit || '-')}</td>${values}</tr>`;
   }).join('');
   return `<div class="preview-table-wrap"><table class="detail-table"><thead><tr><th>Group</th><th>Parameter</th><th>Unit</th>${header}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -838,7 +838,7 @@ function renderImportPreview() {
   const current = data.production?.current;
   if (current) {
     const both = current.bySpeed !== null && current.byCycle !== null;
-    production = `<div class="preview-production"><h4>Pipe Production Rate</h4>${productionCards(current, data.classification.type === 'trial' ? 'Trial / After' : 'Normal Operation')}${both ? `<div class="rate-choice required-choice"><strong>Two valid results were found. Choose the result to adopt:</strong><label><input type="radio" name="previewOutputMethod" value="speed"/> ${current.bySpeed.toFixed(2)} kg/h — Haul-off speed</label><label><input type="radio" name="previewOutputMethod" value="cycle"/> ${current.byCycle.toFixed(2)} kg/h — Cycle / cut time</label><small>Internal difference: ${current.differencePercent}%</small></div>` : ''}</div>`;
+    production = `<div class="preview-production"><h4>Pipe Production Rate</h4>${productionCards(current, data.classification.type === 'trial' ? 'Trial / After' : 'Normal Operation')}${both ? `<div class="rate-choice required-choice"><strong>Two valid results were found. Choose the result to adopt:</strong><label><input type="radio" name="previewOutputMethod" value="speed"/> ${current.bySpeed.toFixed(2)} kg/h - Haul-off speed</label><label><input type="radio" name="previewOutputMethod" value="cycle"/> ${current.byCycle.toFixed(2)} kg/h - Cycle / cut time</label><small>Internal difference: ${current.differencePercent}%</small></div>` : ''}</div>`;
   }
   $('#importPreviewContent').innerHTML = `<div class="detail-grid">${meta.map(([label, value]) => `<div class="detail-box"><span>${esc(label)}</span>${esc(value)}</div>`).join('')}</div>${information ? `<h4>Record Information</h4><div class="detail-grid">${information}</div>` : ''}${warnings.length ? `<div class="warning-box">${warnings.map(warning => `<p>${esc(warning)}</p>`).join('')}</div>` : ''}${production}${previewTable(data)}`;
 }
@@ -990,7 +990,7 @@ function renderDashboard() {
     if ($(`#${key}Percent`)) $(`#${key}Percent`).textContent = percent(number) + '%';
   });
   if ($('#recentRecords')) {
-    $('#recentRecords').innerHTML = records.slice(0, 5).map(record => `<div class="recent-item"><div class="dept-icon">${record.department === 'pipe' ? 'P' : record.department === 'fittings' ? 'F' : 'C'}</div><div><h4>${esc(record.product)} — ${esc(record.machine)}</h4><p>${cap(record.department)} · ${record.type === 'trial' ? (record.status === 'planned' ? 'Pending Run / Materials Only' : 'Trial') : 'Operating Conditions'}</p></div><small>${esc(record.date)}</small></div>`).join('') || '<div class="empty">No records yet.</div>';
+    $('#recentRecords').innerHTML = records.slice(0, 5).map(record => `<div class="recent-item"><div class="dept-icon">${record.department === 'pipe' ? 'P' : record.department === 'fittings' ? 'F' : 'C'}</div><div><h4>${esc(record.product)} - ${esc(record.machine)}</h4><p>${cap(record.department)} - ${record.type === 'trial' ? (record.status === 'planned' ? 'Pending Run / Materials Only' : 'Trial') : 'Operating Conditions'}</p></div><small>${esc(record.date)}</small></div>`).join('') || '<div class="empty">No records yet.</div>';
   }
 }
 
@@ -1024,96 +1024,90 @@ function toggleRecordReview(id) {
 }
 
 function getDisplayFormulaCode(record) {
-  const codeParam = (record.parameters || []).find(p => normalize(p.name) === 'formula code' || normalize(p.parameter) === 'formula code');
+  if (!record) return '-';
+  
+  const codeParam = (record.parameters || []).find(p => p && (normalize(p.name || '') === 'formula code' || normalize(p.parameter || '') === 'formula code'));
   
   if (codeParam) {
-    if (codeParam.after && String(codeParam.after).trim() !== '') return codeParam.after.trim();
-    if (codeParam.value && String(codeParam.value).trim() !== '') return codeParam.value.trim();
-    if (codeParam.before && String(codeParam.before).trim() !== '') return codeParam.before.trim();
+    if (codeParam.after && String(codeParam.after).trim() !== '') return String(codeParam.after).trim();
+    if (codeParam.value && String(codeParam.value).trim() !== '') return String(codeParam.value).trim();
+    if (codeParam.before && String(codeParam.before).trim() !== '') return String(codeParam.before).trim();
   }
 
   const rawCode = String(record.formulaCode || '').trim();
-  if (!rawCode) return '—';
+  if (!rawCode) return '-';
 
   if (rawCode.includes('->')) {
     const parts = rawCode.split('->').map(s => s.trim());
-    return parts[1] || parts[0] || '—';
+    return parts[1] || parts[0] || '-';
   }
 
   return rawCode;
 }
 
-function printMaterialsReport(hideOptions = { hiddenParams: [], hiddenMeta: [] }) {
-  const { details, summary } = extractTrialMaterials();
-  const generatedAt = new Date().toLocaleString();
+function renderRecords() {
+  const data = getFilteredRecords();
+  const table = $('#recordsTable');
+  if (!table) return;
 
-  const filteredSummary = summary.filter(s => !hideOptions.hiddenParams.includes(s.name));
-  const filteredDetails = details.filter(d => !hideOptions.hiddenParams.includes(d.material));
+  try {
+    const rowsHtml = data.map(record => {
+      let typeBadge = `<span class="badge ${record.type || 'operating'}">${esc(record.type || 'Operating')}</span>`;
+      if (record.type === 'trial' && record.status === 'planned') {
+        typeBadge = `<span class="badge planned">Pending Run</span>`;
+      }
+      const purposeText = record.purpose ? esc(record.purpose) : '<span style="color:var(--muted, #64748b);">-</span>';
+      const isTrial = record.type === 'trial';
+      const handoverBtn = isTrial ? `<button class="icon-btn handover-record" data-id="${record.id}" title="Print Material Handover Voucher" style="color:#10b981;font-weight:bold;">Voucher</button>` : '';
 
-  let totalKg = filteredSummary.reduce((sum, item) => sum + item.totalQty, 0);
+      const revStatus = record.reviewStatus || 'pending';
+      const statusColor = revStatus === 'verified' ? '#10b981' : (revStatus === 'flagged' ? '#ef4444' : '#f59e0b');
+      const statusTitle = revStatus === 'verified' ? 'Verified (Green)' : (revStatus === 'flagged' ? 'Needs Fix / Duplicate (Red)' : 'Pending Review (Yellow)');
 
-  const showCards = !hideOptions.hiddenMeta.includes('Summary Cards');
-  const showSummaryTable = !hideOptions.hiddenMeta.includes('Consolidated Material Summary Table');
-  const showDetailedTable = !hideOptions.hiddenMeta.includes('Detailed Consumption Log Table');
+      const auditBadge = `<button class="review-toggle-btn" data-id="${record.id}" title="Click to toggle status: ${statusTitle}" style="background:transparent;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:12px;border:1px solid ${statusColor}44;background:${statusColor}15;">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${statusColor};box-shadow:0 0 6px ${statusColor};"></span>
+        <small style="color:${statusColor};font-weight:bold;font-size:10.5px;text-transform:capitalize;">${revStatus}</small>
+      </button>`;
 
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Trial Raw Materials Consumption Report</title><style>
-    @page { size: A4 portrait; margin: 8mm; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { font-family: Arial, sans-serif; color: #142330; font-size: 9.5px; line-height: 1.25; margin: 0; padding: 10px; }
-    .no-print { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
-    .print-btn { background: #109f83; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-    @media print { .no-print { display: none !important; } body { padding: 0; } }
-    header { border-bottom: 2.5px solid #109f83; padding-bottom: 4px; margin-bottom: 8px; }
-    h1 { font-size: 18px; margin: 0 0 3px; color: #109f83; }
-    h2 { font-size: 11px; color: #467083; margin: 0; }
-    .summary-grid { display: ${showCards ? 'grid' : 'none'}; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
-    .summary-card { border: 1px solid #ccd9df; border-radius: 4px; padding: 6px 8px; background: #fafcfc; }
-    .summary-card span { display: block; color: #6b8290; font-size: 7.5px; text-transform: uppercase; margin-bottom: 2px; }
-    .summary-card strong { font-size: 11px; color: #142330; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-    th, td { border: 1px solid #bdcdd5; padding: 4px 6px; text-align: left; vertical-align: middle; }
-    th { background: #eaf3f5; font-size: 9px; font-weight: 700; color: #214352; }
-    td { font-size: 8.5px; }
-    .footer { margin-top: 8px; color: #738894; font-size: 7.5px; text-align: right; }
-  </style></head><body>
-    <div class="no-print">
-      <button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button>
-    </div>
-    <header><h1>Trial Raw Materials Consumption Audit</h1><h2>Non-Inventory Trial Raw Materials Record</h2></header>
-    <div class="summary-grid">
-      <div class="summary-card"><span>Total Raw Materials</span><strong>${totalKg.toFixed(2)} kg</strong></div>
-      <div class="summary-card"><span>Materials Types</span><strong>${filteredSummary.length} items</strong></div>
-      <div class="summary-card"><span>Logged Entries</span><strong>${filteredDetails.length} logs</strong></div>
-      <div class="summary-card"><span>Audit Status</span><strong>Verified</strong></div>
-    </div>
+      const displayFormula = getDisplayFormulaCode(record);
 
-    ${showSummaryTable ? `
-      <h3 style="margin:8px 0 3px;font-size:11px;color:#214352;">Consolidated Material Summary</h3>
-      <table><thead><tr><th style="width:40px;">#</th><th>Raw Material</th><th style="width:100px;">Trials Count</th><th style="width:130px;">Total Consumed</th></tr></thead><tbody>
-        ${filteredSummary.map((item, idx) => `<tr><td>${idx + 1}</td><td><strong>${esc(item.name)}</strong></td><td>${item.count}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;">No items</td></tr>'}
-      </tbody></table>
-    ` : ''}
+      return `<div class="data-row">
+        <div>${esc(record.date || '-')}</div>
+        <div>${typeBadge}</div>
+        <div style="text-align:center;">${auditBadge}</div>
+        <div title="${esc(displayFormula)}" style="font-weight:bold; color:var(--accent, #38bdf8);">${esc(displayFormula)}</div>
+        <div><span class="badge ${record.department || 'common'}">${esc(record.department || 'common')}</span></div>
+        <div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div>
+        <div class="row-actions">
+          <button class="icon-btn view-record" data-id="${record.id}">View</button>
+          <button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent, #38bdf8);font-weight:bold;">Edit</button>
+          <button class="icon-btn pdf-record" data-id="${record.id}">PDF</button>
+          ${handoverBtn}
+          <button class="icon-btn delete delete-record" data-id="${record.id}">x</button>
+        </div>
+      </div>`;
+    }).join('');
 
-    ${showDetailedTable ? `
-      <h3 style="margin:12px 0 3px;font-size:11px;color:#214352;">Detailed Consumption Log</h3>
-      <table><thead><tr><th style="width:30px;">#</th><th style="width:75px;">Date</th><th style="width:75px;">Trial No</th><th style="width:75px;">Status</th><th>Product</th><th>Material</th><th style="width:65px;">Qty/Batch</th><th style="width:50px;">Batches</th><th style="width:75px;">Total Qty</th></tr></thead><tbody>
-        ${filteredDetails.map((item, idx) => `<tr><td>${idx + 1}</td><td>${esc(item.date)}</td><td>${esc(item.trialNo)}</td><td>${esc(item.status)}</td><td>${esc(item.product)}</td><td>${esc(item.material)}</td><td>${item.unitQty} ${esc(item.unit)}</td><td>${item.batches}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('') || '<tr><td colspan="9" style="text-align:center;">No items</td></tr>'}
-      </tbody></table>
-    ` : ''}
+    table.innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div style="text-align:center;">Review Audit</div><div>Formula Code</div><div>Department</div><div>Purpose</div><div>Actions</div></div>${rowsHtml || '<div class="empty">No matching records.</div>'}`;
 
-    <div class="footer">Generated ${esc(generatedAt)}</div>
-    <script>
-      window.onload = function() {
-        setTimeout(function() { window.print(); }, 300);
-      };
-    <\/script>
-  </body></html>`;
-
-  const reportWindow = window.open('', '_blank', 'width=1100,height=800');
-  if (!reportWindow) { toast('Allow pop-ups to print the report.'); return; }
-  reportWindow.document.open();
-  reportWindow.document.write(doc);
-  reportWindow.document.close();
+    $$('.review-toggle-btn').forEach(btn => btn.addEventListener('click', () => toggleRecordReview(btn.dataset.id)));
+    $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
+    $$('.edit-record').forEach(button => button.addEventListener('click', () => editRecord(button.dataset.id)));
+    $$('.pdf-record').forEach(button => button.addEventListener('click', () => openPrintSettings(button.dataset.id)));
+    $$('.handover-record').forEach(button => button.addEventListener('click', () => openVoucherSettings(button.dataset.id)));
+    $$('.delete-record').forEach(button => button.addEventListener('click', () => { 
+      if (confirm('Delete this record?')) { 
+        records = records.filter(record => record.id !== button.dataset.id); 
+        save(); 
+        renderRecords(); 
+        renderDashboard(); 
+        renderMaterials(); 
+      } 
+    }));
+  } catch (err) {
+    console.error('Error rendering records:', err);
+    table.innerHTML = '<div class="empty">Error displaying records table. Check console for details.</div>';
+  }
 }
 
 function isFormulaMaterial(group = '', name = '') {
@@ -1133,10 +1127,10 @@ function extractTrialMaterials() {
 
   trialRecords.forEach(record => {
     const batches = parseNumber(record.batches) || 1;
-    const logDate = record.preparingDate || record.mixingDate || record.date || '—';
-    const trialNo = record.trialNo || '—';
-    const product = record.product || '—';
-    const machine = record.machine || '—';
+    const logDate = record.preparingDate || record.mixingDate || record.date || '-';
+    const trialNo = record.trialNo || '-';
+    const product = record.product || '-';
+    const machine = record.machine || '-';
     const status = record.status === 'planned' ? 'Pending Run' : 'Executed';
 
     (record.parameters || []).forEach(param => {
@@ -1257,7 +1251,10 @@ function printMaterialsReport(hideOptions = { hiddenParams: [], hiddenMeta: [] }
   const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Trial Raw Materials Consumption Report</title><style>
     @page { size: A4 portrait; margin: 8mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { font-family: Arial, sans-serif; color: #142330; font-size: 9.5px; line-height: 1.25; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; color: #142330; font-size: 9.5px; line-height: 1.25; margin: 0; padding: 10px; }
+    .no-print { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+    .print-btn { background: #109f83; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    @media print { .no-print { display: none !important; } body { padding: 0; } }
     header { border-bottom: 2.5px solid #109f83; padding-bottom: 4px; margin-bottom: 8px; }
     h1 { font-size: 18px; margin: 0 0 3px; color: #109f83; }
     h2 { font-size: 11px; color: #467083; margin: 0; }
@@ -1271,6 +1268,9 @@ function printMaterialsReport(hideOptions = { hiddenParams: [], hiddenMeta: [] }
     td { font-size: 8.5px; }
     .footer { margin-top: 8px; color: #738894; font-size: 7.5px; text-align: right; }
   </style></head><body>
+    <div class="no-print">
+      <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+    </div>
     <header><h1>Trial Raw Materials Consumption Audit</h1><h2>Non-Inventory Trial Raw Materials Record</h2></header>
     <div class="summary-grid">
       <div class="summary-card"><span>Total Raw Materials</span><strong>${totalKg.toFixed(2)} kg</strong></div>
@@ -1294,12 +1294,18 @@ function printMaterialsReport(hideOptions = { hiddenParams: [], hiddenMeta: [] }
     ` : ''}
 
     <div class="footer">Generated ${esc(generatedAt)}</div>
-    <script>window.addEventListener('load', () => setTimeout(() => window.print(), 200));<\/script>
+    <script>
+      window.onload = function() {
+        setTimeout(function() { window.print(); }, 300);
+      };
+    <\/script>
   </body></html>`;
 
   const reportWindow = window.open('', '_blank', 'width=1100,height=800');
   if (!reportWindow) { toast('Allow pop-ups to print the report.'); return; }
-  reportWindow.document.documentElement.innerHTML = doc;
+  reportWindow.document.open();
+  reportWindow.document.write(doc);
+  reportWindow.document.close();
 }
 
 function importJsonFile(file) {
@@ -1565,8 +1571,8 @@ function buildPrintDocument(record, hideOptions = { hideFormulation: false, hidd
     <main id="reportRoot" class="report-root">
       <div class="content-wrap">
         <header>
-          <h1>Process Conditions &amp; Trial Report</h1>
-          <h2>${esc(record.product)} — ${esc(record.machine)}</h2>
+          <h1>Process Conditions and Trial Report</h1>
+          <h2>${esc(record.product)} - ${esc(record.machine)}</h2>
         </header>
         <section class="print-purpose">
           <span>${esc(purposeLabel)}</span>
@@ -1626,7 +1632,7 @@ function openPrintSettings(id) {
   let html = '<div style="display:grid; gap:12px;">';
 
   html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
-  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header &amp; Information Fields</strong>';
+  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header & Information Fields</strong>';
   html += '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">';
 
   metaItems.forEach(([label, value]) => {
@@ -1646,7 +1652,7 @@ function openPrintSettings(id) {
   html += '</div></div>';
 
   html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
-  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Parameters &amp; Sections</strong>';
+  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Parameters & Sections</strong>';
   html += '<div style="display:grid; gap:8px;">';
 
   if (hasFormulation) {
@@ -1686,7 +1692,7 @@ function openVoucherSettings(id) {
 
   let html = '<div style="display:grid; gap:12px;">';
   html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
-  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header &amp; Information Fields to Hide</strong>';
+  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header & Information Fields to Hide</strong>';
   html += '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">';
 
   ['Purpose', 'Product Code', 'Formula Code', 'Handover Status', 'Received By / Doc No', 'Batches Count'].forEach(item => {
@@ -1760,9 +1766,9 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
   let materialsRows = '';
   if (rawMaterials.length > 0) {
     materialsRows = rawMaterials.map(m => {
-      const valPerBatch = m.afterTrial || m.normal || m.value || m.before || '—';
+      const valPerBatch = m.afterTrial || m.normal || m.value || m.before || '-';
       const numVal = parseFloat(valPerBatch);
-      const totalVal = !isNaN(numVal) ? (numVal * batches).toFixed(2) : '—';
+      const totalVal = !isNaN(numVal) ? (numVal * batches).toFixed(2) : '-';
       return `<tr>
         <td style="padding:7px 10px;border:1px solid #cbd5e1;">${esc(m.name || m.parameter)}</td>
         <td style="padding:7px 10px;border:1px solid #cbd5e1;text-align:center;">${esc(valPerBatch)}</td>
@@ -1817,8 +1823,8 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
     <body>
       <div class="header-box">
         <div>
-          <div class="title">Material Handover &amp; Receipt Voucher</div>
-          <div style="font-size: 12px; color: #64748b;">Process Control &amp; Raw Materials Section</div>
+          <div class="title">Material Handover & Receipt Voucher</div>
+          <div style="font-size: 12px; color: #64748b;">Process Control & Raw Materials Section</div>
         </div>
         <div class="doc-meta">
           <div><strong>Date:</strong> ${esc(record.date)}</div>
@@ -1857,7 +1863,7 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
 
       <div class="signatures">
         <div class="sign-box">
-          Issued &amp; Prepared By (Raw Materials Dept.)
+          Issued & Prepared By (Raw Materials Dept.)
           <div class="sign-line">Signature: ______________________</div>
         </div>
         <div class="sign-box">
