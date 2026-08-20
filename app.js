@@ -430,7 +430,7 @@ function editRecord(id) {
     trialStatus: record.status || (record.type === 'trial' ? 'completed' : '')
   });
 
-  const fields = ['recordDate', 'trialNo', 'machine', 'workers', 'product', 'formulaCode', 'color', 'cavities', 'batches', 'preparingDate', 'mixingDate', 'pelletizingDate', 'materialHandover', 'receivedByDoc', 'purpose', 'observations', 'conclusion'];
+  const fields = ['recordDate', 'trialNo', 'machine', 'workers', 'product', 'productCode', 'formulaCode', 'color', 'cavities', 'batches', 'preparingDate', 'mixingDate', 'pelletizingDate', 'materialHandover', 'receivedByDoc', 'purpose', 'observations', 'conclusion'];
   fields.forEach(f => {
     const val = record[f] || (f === 'recordDate' ? record.date : '');
     if ($('#' + f) && !isBlank(val)) $('#' + f).value = val;
@@ -440,59 +440,6 @@ function editRecord(id) {
   renderProductionPanel();
   switchView('new-record');
   toast('Record loaded for full editing.');
-}
-
-function openRecord(id) {
-  const record = records.find(item => item.id === id);
-  if (!record) return;
-  selectedRecordId = id;
-
-  const dialog = $('#recordDialog');
-  if (!dialog) return;
-
-  const meta = recordMeta(record);
-  const infoHtml = meta.map(([k, v]) => `
-    <div class="detail-box" style="background:var(--panel2, #1e293b); border:1px solid var(--line, #334155); border-radius:6px; padding:6px 10px;">
-      <span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">${esc(k)}</span>
-      <strong style="color:var(--text, #f8fafc); font-size:12px;">${esc(v)}</strong>
-    </div>
-  `).join('');
-
-  const builtHtml = `
-    <div class="detail-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-bottom:12px;">
-      ${infoHtml}
-    </div>
-    ${record.purpose ? `<div class="detail-box" style="background:var(--panel2, #1e293b); border-left:3px solid var(--accent, #38bdf8); border-radius:4px; padding:8px 12px; margin-bottom:12px;"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Purpose</span><p style="margin:2px 0 0; color:var(--text, #f8fafc); font-size:12.5px;">${esc(record.purpose)}</p></div>` : ''}
-    ${productionHtml(record, false)}
-    <div style="margin-top:12px; overflow-x:auto;">
-      ${recordParameterTable(record, false)}
-    </div>
-    ${(record.observations || record.conclusion) ? `
-      <div class="detail-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
-        ${record.observations ? `<div class="detail-box" style="background:var(--panel2, #1e293b); padding:8px; border-radius:6px; border:1px solid var(--line, #334155);"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Observations</span><p style="margin:4px 0 0; font-size:11.5px; color:var(--text, #f8fafc);">${esc(record.observations)}</p></div>` : ''}
-        ${record.conclusion ? `<div class="detail-box" style="background:var(--panel2, #1e293b); padding:8px; border-radius:6px; border:1px solid var(--line, #334155);"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Conclusion</span><p style="margin:4px 0 0; font-size:11.5px; color:var(--text, #f8fafc);">${esc(record.conclusion)}</p></div>` : ''}
-      </div>
-    ` : ''}
-  `;
-
-  // البحث عن الحاوية أو إنشاؤها تلقائياً داخل النافذة
-  let content = dialog.querySelector('#recordDetailContent') || dialog.querySelector('#recordDetail') || dialog.querySelector('.dialog-body') || dialog.querySelector('.record-detail-body');
-  
-  if (!content) {
-    content = document.createElement('div');
-    content.id = 'recordDetailContent';
-    content.className = 'record-detail-body';
-    content.style.cssText = 'margin:12px 0; max-height:65vh; overflow-y:auto; padding-right:4px;';
-    const footer = dialog.querySelector('.dialog-foot') || dialog.querySelector('.modal-footer') || dialog.querySelector('#dialogPdfBtn')?.parentElement;
-    if (footer) {
-      dialog.insertBefore(content, footer);
-    } else {
-      dialog.appendChild(content);
-    }
-  }
-
-  content.innerHTML = builtHtml;
-  dialog.showModal();
 }
 
 function filteredLibrary() {
@@ -672,7 +619,7 @@ function normalizeScope(value) {
 function scopeMatches(scope, department) { return scope === 'common' || scope === department; }
 
 function isInformationName(name) {
-  return /^(trial no|trial number|record date|trial date|date|trial or normal run date|running date|date of trial|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|no of people|number of people|worker count|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|material handover|handover status|received by \/ doc no|received by|doc no|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
+  return /^(trial no|trial number|record date|trial date|date|trial or normal run date|running date|date of trial|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|no of people|number of people|worker count|product|product name|product code|formula code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|material handover|handover status|received by \/ doc no|received by|doc no|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
 }
 
 function valueType(value, parameterName) {
@@ -698,8 +645,8 @@ function findColumn(headers, aliases) {
   return -1;
 }
 
-function assignInformation(target, name, value) {
-  if (isBlank(value)) return;
+function assignInformation(target, name, value, normalVal = '', trialVal = '') {
+  if (isBlank(value) && isBlank(normalVal) && isBlank(trialVal)) return;
   const key = normalize(name);
   const map = {
     'trial no': 'trialNo', 'trial number': 'trialNo',
@@ -710,7 +657,7 @@ function assignInformation(target, name, value) {
     'number of workers': 'workers', 'no of workers': 'workers', 'workers': 'workers', 'worker count': 'workers',
     'no of people': 'workers', 'number of people': 'workers',
     'product': 'product', 'product name': 'product',
-    'product code': 'formulaCode', 'formula code': 'formulaCode', 'code': 'formulaCode',
+    'product code': 'productCode',
     'color': 'color', 'no of cavities': 'cavities', 'number of cavities': 'cavities', 'cavities': 'cavities',
     'no of batches': 'batches', 'number of batches': 'batches', 'batches': 'batches',
     'preparing date': 'preparingDate',
@@ -721,6 +668,16 @@ function assignInformation(target, name, value) {
     'observations': 'observations', 'findings': 'observations',
     'conclusion': 'conclusion', 'recommendation': 'conclusion', 'result': 'conclusion'
   };
+
+  if (key === 'formula code') {
+    if (!isBlank(normalVal) && !isBlank(trialVal) && normalVal !== trialVal) {
+      target.formulaCode = `${normalVal} -> ${trialVal}`;
+    } else {
+      target.formulaCode = String(!isBlank(trialVal) ? trialVal : (!isBlank(normalVal) ? normalVal : value)).trim();
+    }
+    return;
+  }
+
   const field = map[key];
   if (field) target[field] = String(value).trim();
   else target.extraInformation.push({ name, value: String(value).trim() });
@@ -789,8 +746,8 @@ function parseExcelWorkbook(workbook, classification) {
 
     if (type === 'Information' || isInformationName(name)) {
       const informationValue = classification.type === 'trial' ? (isBlank(normalValue) ? trialValue : normalValue) : (isBlank(normalValue) ? trialValue : normalValue);
-      assignInformation(result.information, name, informationValue);
-      continue;
+      assignInformation(result.information, name, informationValue, normalValue, trialValue);
+      if (normalize(name) !== 'formula code') continue;
     }
     if (type === 'Calculated') {
       result.calculatedRows.push({ name, unit, group, scope, valueType: type, before: normalValue, after: trialValue, value: normalValue });
@@ -883,7 +840,7 @@ function renderImportPreview() {
 }
 
 function fieldLabel(key) {
-  return ({ trialNo: 'Trial No.', recordDate: 'Record Date', formulaCode: 'Formula / Product Code', preparingDate: 'Preparing Date', mixingDate: 'Mixing Date', pelletizingDate: 'Pelletizing Date', extraInformation: 'Extra Information' })[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, char => char.toUpperCase());
+  return ({ trialNo: 'Trial No.', recordDate: 'Record Date', productCode: 'Product Code', formulaCode: 'Formula Code', preparingDate: 'Preparing Date', mixingDate: 'Mixing Date', pelletizingDate: 'Pelletizing Date', extraInformation: 'Extra Information' })[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, char => char.toUpperCase());
 }
 
 function toInputDate(value) {
@@ -915,7 +872,7 @@ function confirmImport() {
   const info = pendingImport.information;
   const values = {
     trialNo: info.trialNo, recordDate: toInputDate(info.recordDate) || new Date().toISOString().slice(0, 10), machine: info.machine, workers: info.workers, product: info.product,
-    formulaCode: info.formulaCode, color: info.color, cavities: info.cavities, batches: info.batches, preparingDate: toInputDate(info.preparingDate), mixingDate: toInputDate(info.mixingDate), pelletizingDate: toInputDate(info.pelletizingDate),
+    productCode: info.productCode, formulaCode: info.formulaCode, color: info.color, cavities: info.cavities, batches: info.batches, preparingDate: toInputDate(info.preparingDate), mixingDate: toInputDate(info.mixingDate), pelletizingDate: toInputDate(info.pelletizingDate),
     materialHandover: info.materialHandover, receivedByDoc: info.receivedByDoc,
     purpose: info.purpose, observations: info.observations, conclusion: info.conclusion
   };
@@ -974,6 +931,7 @@ function saveRecord(event) {
     machine: finalMachine,
     workers: field('workers'),
     product: finalProduct,
+    productCode: field('productCode'),
     formulaCode: field('formulaCode'),
     color: field('color'),
     cavities: field('cavities'),
@@ -1045,7 +1003,7 @@ function getFilteredRecords() {
     else if (typeFilter === 'trial-completed') matchesType = record.type === 'trial' && record.status !== 'planned';
     else if (typeFilter === 'trial-planned') matchesType = record.type === 'trial' && record.status === 'planned';
 
-    const matchesSearch = [record.machine, record.product, record.formulaCode, record.purpose, record.trialNo, record.status, record.reviewStatus].join(' ').toLowerCase().includes(query);
+    const matchesSearch = [record.machine, record.product, record.productCode, record.formulaCode, record.purpose, record.trialNo, record.status, record.reviewStatus].join(' ').toLowerCase().includes(query);
     return matchesDept && matchesType && matchesSearch;
   });
 }
@@ -1250,17 +1208,10 @@ function importJsonFile(file) {
   reader.readAsText(file);
 }
 
-function recordParameterTable(record, printable = false, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
+function recordParameterTable(record, printable = false, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }, isFormulationSection = false) {
   const trial = record.type === 'trial';
   const withBefore = trial && record.status !== 'planned' && (record.baselineMode || 'running_with_before') === 'running_with_before';
   if (!(record.parameters || []).length) return '';
-
-  let header = '';
-  if (printable) {
-    header = withBefore ? '<th>Normal / Before Trial</th><th>Trial / After Trial</th>' : `<th>${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th>`;
-  } else {
-    header = withBefore ? '<th>Normal / Before Trial</th><th>Trial / After Trial</th>' : `<th>${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th>`;
-  }
 
   const displayParameters = (record.parameters || []).filter(parameter => {
     if (printable) {
@@ -1274,6 +1225,22 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
 
   if (displayParameters.length === 0) {
     return `<div class="notes-box" style="padding:4px; font-size:10px;"><p>No parameter records available.</p></div>`;
+  }
+
+  let totalBeforeWeight = 0;
+  let totalAfterWeight = 0;
+  let hasValidWeights = false;
+
+  if (isFormulationSection) {
+    displayParameters.forEach(p => {
+      if (isFormulaMaterial(p.group, p.name) && normalize(p.name) !== 'total') {
+        const valB = parseNumber(p.before);
+        const valA = parseNumber(p.after || p.value);
+        if (Number.isFinite(valB)) { totalBeforeWeight += valB; hasValidWeights = true; }
+        if (Number.isFinite(valA)) { totalAfterWeight += valA; hasValidWeights = true; }
+        else if (Number.isFinite(valB)) { totalAfterWeight += valB; }
+      }
+    });
   }
 
   const rows = displayParameters.map(parameter => {
@@ -1297,11 +1264,27 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
     }
   }).join('');
 
+  let totalRowHtml = '';
+  if (isFormulationSection && hasValidWeights && (!printable || !hideOptions.hiddenMeta.includes('Total Weight Row'))) {
+    if (withBefore) {
+      const beforeStr = totalBeforeWeight > 0 ? totalBeforeWeight.toFixed(2) : '-';
+      const afterStr = totalAfterWeight > 0 ? totalAfterWeight.toFixed(2) : '-';
+      totalRowHtml = printable
+        ? `<tr style="background:#e0f2fe;font-weight:bold;color:#0369a1;"><td>Formulation</td><td>TOTAL BATCH WEIGHT (kg)</td><td>${beforeStr}</td><td>${afterStr}</td></tr>`
+        : `<tr style="background:rgba(56,189,248,0.15);font-weight:bold;color:var(--accent,#38bdf8);"><td>Formulation</td><td>TOTAL BATCH WEIGHT</td><td>kg</td><td>${beforeStr}</td><td>${afterStr}</td></tr>`;
+    } else {
+      const targetTotal = (totalAfterWeight > 0 ? totalAfterWeight : totalBeforeWeight).toFixed(2);
+      totalRowHtml = printable
+        ? `<tr style="background:#e0f2fe;font-weight:bold;color:#0369a1;"><td>Formulation</td><td>TOTAL BATCH WEIGHT (kg)</td><td>${targetTotal}</td></tr>`
+        : `<tr style="background:rgba(56,189,248,0.15);font-weight:bold;color:var(--accent,#38bdf8);"><td>Formulation</td><td>TOTAL BATCH WEIGHT</td><td>kg</td><td>${targetTotal}</td></tr>`;
+    }
+  }
+
   const theadHTML = printable 
     ? (withBefore ? `<tr><th style="width:25%;">Group</th><th style="width:45%;">Parameter</th><th style="width:15%;">Normal / Before</th><th style="width:15%;">Trial / After</th></tr>` : `<tr><th style="width:30%;">Group</th><th style="width:50%;">Parameter</th><th style="width:20%;">${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th></tr>`)
-    : `<tr><th>Group</th><th>Parameter</th><th>Unit</th>${header}</tr>`;
+    : `<tr><th>Group</th><th>Parameter</th><th>Unit</th>${withBefore ? '<th>Normal / Before Trial</th><th>Trial / After Trial</th>' : `<th>${trial ? 'Trial / After Trial' : 'Normal / Before Trial'}</th>`}</tr>`;
 
-  return `<table class="${printable ? 'print-table' : 'detail-table'}"><thead>${theadHTML}</thead><tbody>${rows}</tbody></table>`;
+  return `<table class="${printable ? 'print-table' : 'detail-table'}"><thead>${theadHTML}</thead><tbody>${rows}${totalRowHtml}</tbody></table>`;
 }
 
 function isFormulationParameter(parameter) {
@@ -1311,7 +1294,8 @@ function isFormulationParameter(parameter) {
 function reportParameterSection(record, title, predicate, hideOptions) {
   const parameters = (record.parameters || []).filter(predicate);
   if (!parameters.length) return '';
-  return `<section class="print-section"><h3>${esc(title)}</h3>${recordParameterTable({ ...record, parameters }, true, hideOptions)}</section>`;
+  const isFormulation = title.toLowerCase().includes('formulation');
+  return `<section class="print-section"><h3>${esc(title)}</h3>${recordParameterTable({ ...record, parameters }, true, hideOptions, isFormulation)}</section>`;
 }
 
 function reportParameterSections(record, hideOptions) {
@@ -1338,7 +1322,8 @@ function recordMeta(record) {
   const items = [
     ['Type', trial ? (isPlanned ? 'Planned Trial' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Single Run')) : 'Operating Conditions'],
     ['Status', trial ? (isPlanned ? 'Pending Run' : 'Completed') : 'Active'],
-    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Workers', record.workers], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Prep Date', record.preparingDate], ['Mix Date', record.mixingDate], ['Pellet Date', record.pelletizingDate],
+    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Workers', record.workers], 
+    ['Product', record.product], ['Product Code', record.productCode], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Prep Date', record.preparingDate], ['Mix Date', record.mixingDate], ['Pellet Date', record.pelletizingDate],
     ['Material Handover', record.materialHandover], ['Received By / Doc No', record.receivedByDoc]
   ];
   if (trial && !isPlanned) items.splice(2, 0, ['Before Status', baselineLabels[record.baselineMode || 'running_with_before']]);
@@ -1355,6 +1340,58 @@ function productionHtml(record, printable = false) {
 
 function reportPurposeLabel(record) {
   return record.type === 'trial' ? 'Trial Purpose' : 'Purpose';
+}
+
+function openRecord(id) {
+  const record = records.find(item => item.id === id);
+  if (!record) return;
+  selectedRecordId = id;
+
+  const dialog = $('#recordDialog');
+  if (!dialog) return;
+
+  const meta = recordMeta(record);
+  const infoHtml = meta.map(([k, v]) => `
+    <div class="detail-box" style="background:var(--panel2, #1e293b); border:1px solid var(--line, #334155); border-radius:6px; padding:6px 10px;">
+      <span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">${esc(k)}</span>
+      <strong style="color:var(--text, #f8fafc); font-size:12px;">${esc(v)}</strong>
+    </div>
+  `).join('');
+
+  const builtHtml = `
+    <div class="detail-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-bottom:12px;">
+      ${infoHtml}
+    </div>
+    ${record.purpose ? `<div class="detail-box" style="background:var(--panel2, #1e293b); border-left:3px solid var(--accent, #38bdf8); border-radius:4px; padding:8px 12px; margin-bottom:12px;"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Purpose</span><p style="margin:2px 0 0; color:var(--text, #f8fafc); font-size:12.5px;">${esc(record.purpose)}</p></div>` : ''}
+    ${productionHtml(record, false)}
+    <div style="margin-top:12px; overflow-x:auto;">
+      ${recordParameterTable(record, false, { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }, true)}
+    </div>
+    ${(record.observations || record.conclusion) ? `
+      <div class="detail-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+        ${record.observations ? `<div class="detail-box" style="background:var(--panel2, #1e293b); padding:8px; border-radius:6px; border:1px solid var(--line, #334155);"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Observations</span><p style="margin:4px 0 0; font-size:11.5px; color:var(--text, #f8fafc);">${esc(record.observations)}</p></div>` : ''}
+        ${record.conclusion ? `<div class="detail-box" style="background:var(--panel2, #1e293b); padding:8px; border-radius:6px; border:1px solid var(--line, #334155);"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Conclusion</span><p style="margin:4px 0 0; font-size:11.5px; color:var(--text, #f8fafc);">${esc(record.conclusion)}</p></div>` : ''}
+      </div>
+    ` : ''}
+  `;
+
+  let content = dialog.querySelector('#recordDetailContent') || dialog.querySelector('#recordDetail') || dialog.querySelector('.dialog-body') || dialog.querySelector('.record-detail-body');
+  
+  if (!content) {
+    content = document.createElement('div');
+    content.id = 'recordDetailContent';
+    content.className = 'record-detail-body';
+    content.style.cssText = 'margin:12px 0; max-height:65vh; overflow-y:auto; padding-right:4px;';
+    const footer = dialog.querySelector('.dialog-foot') || dialog.querySelector('.modal-footer') || dialog.querySelector('#dialogPdfBtn')?.parentElement;
+    if (footer) {
+      dialog.insertBefore(content, footer);
+    } else {
+      dialog.appendChild(content);
+    }
+  }
+
+  content.innerHTML = builtHtml;
+  dialog.showModal();
 }
 
 function buildPrintDocument(record, hideOptions = { hideFormulation: false, hiddenParams: [], hiddenMeta: [] }) {
@@ -1584,7 +1621,7 @@ function openVoucherSettings(id) {
   html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header &amp; Information Fields to Hide</strong>';
   html += '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">';
 
-  ['Purpose', 'Formula Code', 'Handover Status', 'Received By / Doc No', 'Batches Count'].forEach(item => {
+  ['Purpose', 'Product Code', 'Formula Code', 'Handover Status', 'Received By / Doc No', 'Batches Count'].forEach(item => {
     html += `<label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
                <input type="checkbox" class="hide-meta-cb" value="${esc(item)}" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
                <span style="font-size:12px; color:var(--text);">${esc(item)}</span>
@@ -1713,6 +1750,7 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
   }
 
   const showPurpose = !hideOptions.hiddenMeta.includes('Purpose');
+  const showProductCode = !hideOptions.hiddenMeta.includes('Product Code') && Boolean(record.productCode);
   const showFormula = !hideOptions.hiddenMeta.includes('Formula Code');
   const showStatus = !hideOptions.hiddenMeta.includes('Handover Status');
   const showReceived = !hideOptions.hiddenMeta.includes('Received By / Doc No');
@@ -1753,8 +1791,9 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
       <div class="meta-grid">
         <div class="meta-card">
           <div><strong>Product / Application:</strong> ${esc(record.product)} (${esc(record.department)})</div>
-          ${showPurpose ? `<div><strong>Purpose:</strong> ${esc(record.purpose || 'Trial Batch')}</div>` : ''}
+          ${showProductCode ? `<div><strong>Product Code:</strong> ${esc(record.productCode)}</div>` : ''}
           ${showFormula ? `<div><strong>Formula Code:</strong> ${esc(record.formulaCode || 'N/A')}</div>` : ''}
+          ${showPurpose ? `<div><strong>Purpose:</strong> ${esc(record.purpose || 'Trial Batch')}</div>` : ''}
         </div>
         <div class="meta-card">
           ${showStatus ? `<div><strong>Handover Status:</strong> <span style="color:#0369a1;font-weight:bold;">${esc(record.materialHandover || 'Delivered to Production')}</span></div>` : ''}
