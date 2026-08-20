@@ -1517,13 +1517,22 @@ function openVoucherSettings(id) {
   html += '</div></div>';
 
   html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
-  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Raw Materials to Hide</strong>';
+  html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">';
+  html += '<strong style="color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Raw Materials Formulation Privacy</strong>';
+  html += '<button type="button" id="hideAllMatBtn" class="text-btn" style="color:#ef4444; font-size:11px; font-weight:bold;">Select All Ingredients (Keep Total Only)</button>';
+  html += '</div>';
+
   html += '<div style="display:grid; gap:8px;">';
+
+  html += `<label style="display:flex; gap:12px; align-items:center; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
+             <input type="checkbox" class="hide-meta-cb" value="Total Weight Row" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
+             <div><strong style="display:block; color:var(--text); font-size:12.5px;">Total Weight (kg) Summary Row</strong><small style="color:var(--muted); font-size:11px;">Check only if you want to hide the total calculated weight</small></div>
+           </label>`;
 
   rawMaterials.forEach(m => {
     const matName = m.name || m.parameter;
-    html += `<label style="display:flex; gap:12px; align-items:center; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
-               <input type="checkbox" class="hide-param-cb" value="${esc(matName)}" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
+    html += `<label style="display:flex; gap:12px; align-items:center; padding:8px 10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
+               <input type="checkbox" class="hide-param-cb voucher-mat-cb" value="${esc(matName)}" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
                <div><strong style="display:block; color:var(--text); font-size:12.5px;">${esc(matName)}</strong></div>
              </label>`;
   });
@@ -1534,6 +1543,14 @@ function openVoucherSettings(id) {
   const dialog = document.querySelector('#printSettingsDialog');
   if (!content || !dialog) { toast('Settings dialog is unavailable.'); return; }
   content.innerHTML = html;
+
+  $('#hideAllMatBtn')?.addEventListener('click', () => {
+    const cbs = $$('.voucher-mat-cb');
+    const allChecked = cbs.every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = !allChecked);
+    $('#hideAllMatBtn').textContent = allChecked ? 'Select All Ingredients (Keep Total Only)' : 'Unselect All Ingredients';
+  });
+
   dialog.showModal();
 }
 
@@ -1571,25 +1588,52 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
   const record = records.find(item => item.id === id);
   if (!record) return;
 
-  const rawMaterials = (record.parameters || []).filter(p => {
+  const allRawMaterials = (record.parameters || []).filter(p => {
     const grp = normalize(p.group || '');
-    const isMat = grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe') || isFormulaMaterial(p.group, p.name);
-    return isMat && !hideOptions.hiddenParams.includes(p.name || p.parameter);
+    return grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe') || isFormulaMaterial(p.group, p.name);
   });
 
   const batches = Number(record.batches) || 1;
 
-  const materialsRows = rawMaterials.length > 0 ? rawMaterials.map(m => {
-    const valPerBatch = m.afterTrial || m.normal || m.value || m.before || '—';
-    const numVal = parseFloat(valPerBatch);
-    const totalVal = !isNaN(numVal) ? (numVal * batches).toFixed(2) : '—';
-    return `<tr>
-      <td style="padding:8px;border:1px solid #cbd5e1;">${esc(m.name || m.parameter)}</td>
-      <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;">${esc(valPerBatch)}</td>
-      <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;">${batches}</td>
-      <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;font-weight:bold;">${totalVal}</td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#64748b;border:1px solid #cbd5e1;">No specific raw material formulation items found.</td></tr>`;
+  let totalBatchWeight = 0;
+  allRawMaterials.forEach(m => {
+    const val = parseFloat(m.afterTrial || m.normal || m.value || m.before || '0');
+    if (!isNaN(val)) totalBatchWeight += val;
+  });
+  const grandTotalIssuedWeight = (totalBatchWeight * batches).toFixed(2);
+
+  const rawMaterials = allRawMaterials.filter(p => !hideOptions.hiddenParams.includes(p.name || p.parameter));
+  const showTotalRow = !hideOptions.hiddenMeta.includes('Total Weight Row');
+
+  let materialsRows = '';
+  if (rawMaterials.length > 0) {
+    materialsRows = rawMaterials.map(m => {
+      const valPerBatch = m.afterTrial || m.normal || m.value || m.before || '—';
+      const numVal = parseFloat(valPerBatch);
+      const totalVal = !isNaN(numVal) ? (numVal * batches).toFixed(2) : '—';
+      return `<tr>
+        <td style="padding:7px 10px;border:1px solid #cbd5e1;">${esc(m.name || m.parameter)}</td>
+        <td style="padding:7px 10px;border:1px solid #cbd5e1;text-align:center;">${esc(valPerBatch)}</td>
+        <td style="padding:7px 10px;border:1px solid #cbd5e1;text-align:center;">${batches}</td>
+        <td style="padding:7px 10px;border:1px solid #cbd5e1;text-align:center;font-weight:bold;">${totalVal}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  if (showTotalRow) {
+    materialsRows += `
+      <tr style="background:#f1f5f9;font-weight:bold;">
+        <td style="padding:8px 10px;border:1.5px solid #0f172a;text-transform:uppercase;color:#0f172a;">Total Compound / Batch Weight (kg)</td>
+        <td style="padding:8px 10px;border:1.5px solid #0f172a;text-align:center;color:#0f172a;">${totalBatchWeight.toFixed(2)}</td>
+        <td style="padding:8px 10px;border:1.5px solid #0f172a;text-align:center;color:#0f172a;">${batches}</td>
+        <td style="padding:8px 10px;border:1.5px solid #0f172a;text-align:center;font-size:13.5px;color:#0284c7;background:#e0f2fe;">${grandTotalIssuedWeight} kg</td>
+      </tr>
+    `;
+  }
+
+  if (!materialsRows) {
+    materialsRows = `<tr><td colspan="4" style="padding:14px;text-align:center;color:#64748b;border:1px solid #cbd5e1;">No formulation items selected for display.</td></tr>`;
+  }
 
   const showPurpose = !hideOptions.hiddenMeta.includes('Purpose');
   const showFormula = !hideOptions.hiddenMeta.includes('Formula Code');
@@ -1647,9 +1691,9 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
         <thead>
           <tr>
             <th style="text-align:left;">Material / Ingredient</th>
-            <th>Per Batch Quantity</th>
+            <th>Per Batch Quantity (kg)</th>
             <th>Batches</th>
-            <th>Total Issued Quantity</th>
+            <th>Total Issued Quantity (kg)</th>
           </tr>
         </thead>
         <tbody>
