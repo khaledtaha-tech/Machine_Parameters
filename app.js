@@ -734,7 +734,7 @@ function parseExcelWorkbook(workbook, classification) {
     if (!scopeMatches(scope, classification.department)) { result.skippedCount += 1; continue; }
     const normalValue = cell(row, columns.normal);
     const trialValue = cell(row, columns.trial);
-    
+
     const libItem = library.find(item => normalize(item.name) === normalize(name));
     const unit = String(cell(row, columns.unit) || extractedUnit || libItem?.unit || '').trim();
     const group = String(cell(row, columns.group) || (type === 'Information' ? 'Information' : 'Imported')).trim();
@@ -751,8 +751,8 @@ function parseExcelWorkbook(workbook, classification) {
 
     const parameter = { rowId: uid(), libraryId: null, name, unit, group, scope, valueType: type, before: '', after: '', value: '' };
     if (classification.type === 'operating') {
-      if (isBlank(normalValue)) continue;
-      parameter.value = String(normalValue).trim();
+      if (isBlank(normalValue) && isBlank(trialValue)) continue;
+      parameter.value = String(!isBlank(normalValue) ? normalValue : trialValue).trim();
     } else if (classification.trialStatus === 'planned') {
       if (!isFormulaMaterial(group, name)) continue;
       parameter.after = String(trialValue || normalValue || '').trim();
@@ -761,9 +761,8 @@ function parseExcelWorkbook(workbook, classification) {
       parameter.before = String(normalValue || '').trim();
       parameter.after = String(trialValue || '').trim();
     } else {
-      if (!isBlank(normalValue)) result.ignoredBeforeCount += 1;
-      if (isBlank(trialValue)) continue;
-      parameter.after = String(trialValue).trim();
+      if (isBlank(trialValue) && isBlank(normalValue)) continue;
+      parameter.after = String(!isBlank(trialValue) ? trialValue : normalValue).trim();
     }
     result.parameters.push(parameter);
   }
@@ -1024,7 +1023,7 @@ function isFormulaMaterial(group = '', name = '') {
   if (isInformationName(name)) return false;
   if (/formula code|product code|^code$|batch|batches|cavities|total/i.test(n)) return false;
   if (g.includes('formula') || g.includes('raw material') || g.includes('additive') || g.includes('chemical')) return true;
-  if (/^(pvc|caco3|stabilizer|tio2|lp551|sag12|finalux|pewax|esbo|calcium stearate|pigment|resin|wax|lubricant)/i.test(n)) return true;
+  if (/^(pvc|caco3|calcium carbonate|stabilizer|tio2|titanium|lp551|sag12|finalux|pewax|pe wax|esbo|calcium stearate|pigment|resin|wax|lubricant|hdpe|lldpe)/i.test(n)) return true;
   return false;
 }
 
@@ -1208,7 +1207,7 @@ function recordParameterTable(record, printable = false, hideOptions = { hideFor
       const afterVal = (parameter.after || parameter.value) ? esc(parameter.after || parameter.value) : '<span style="color:#94a3b8;">-</span>';
       values = `<td>${beforeVal}</td><td>${afterVal}</td>`;
     } else {
-      const val = (trial ? (parameter.after || parameter.value) : parameter.value);
+      const val = (trial ? (parameter.after || parameter.value) : (parameter.before || parameter.value));
       values = `<td>${val ? esc(val) : '<span style="color:#94a3b8;">-</span>'}</td>`;
     }
 
@@ -1241,9 +1240,14 @@ function reportParameterSection(record, title, predicate, hideOptions) {
 
 function reportParameterSections(record, hideOptions) {
   const isFormulation = parameter => isFormulationParameter(parameter);
-  const isTemperature = parameter => /temperatures?|heating|cooling|zone|die|adapter|nozzle|oil/.test(normalize(parameter.group + ' ' + parameter.name));
-  const isTrialResult = parameter => /result|outcome|quality|defect|observation|calculated/.test(normalize(parameter.group + ' ' + parameter.name));
+  const isTemperature = parameter => {
+    const text = normalize((parameter.group || '') + ' ' + (parameter.name || ''));
+    if (/cooling|filling|cycle|refill|time|speed|rpm|pressure|cushion|shot/.test(text)) return false;
+    return /temperatures?|heating|barrel|die|adapter|nozzle|temp/.test(text);
+  };
+  const isTrialResult = parameter => /result|outcome|quality|defect|observation|findings|report/.test(normalize((parameter.group || '') + ' ' + (parameter.name || '')));
   const isOperating = parameter => !isFormulation(parameter) && !isTemperature(parameter) && !isTrialResult(parameter);
+  
   return [
     reportParameterSection(record, 'Formulation', isFormulation, hideOptions),
     reportParameterSection(record, 'Operating Parameters', isOperating, hideOptions),
@@ -1258,7 +1262,8 @@ function recordMeta(record) {
   const items = [
     ['Type', trial ? (isPlanned ? 'Planned Trial' : (record.baselineMode === 'running_with_before' || !record.baselineMode ? 'Trial / Before & After' : 'Trial / Single Run')) : 'Operating Conditions'],
     ['Status', trial ? (isPlanned ? 'Pending Run' : 'Completed') : 'Active'],
-    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Workers', record.workers], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Prep Date', record.preparingDate], ['Mix Date', record.mixingDate], ['Pellet Date', record.pelletizingDate]
+    ['Department', cap(record.department)], ['Date', record.date], ['Trial No.', record.trialNo], ['Machine / Line', record.machine], ['Workers', record.workers], ['Product', record.product], ['Formula Code', record.formulaCode], ['Color', record.color], ['Cavities', record.cavities], ['Batches', record.batches], ['Prep Date', record.preparingDate], ['Mix Date', record.mixingDate], ['Pellet Date', record.pelletizingDate],
+    ['Material Handover', record.materialHandover], ['Received By / Doc No', record.receivedByDoc]
   ];
   if (trial && !isPlanned) items.splice(2, 0, ['Before Status', baselineLabels[record.baselineMode || 'running_with_before']]);
   return items.filter(([, value]) => !isBlank(value));
@@ -1511,17 +1516,17 @@ function printHandoverVoucher(id) {
 
   const rawMaterials = (record.parameters || []).filter(p => {
     const grp = normalize(p.group || '');
-    return grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe');
+    return grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe') || isFormulaMaterial(p.group, p.name);
   });
 
   const batches = Number(record.batches) || 1;
 
   const materialsRows = rawMaterials.length > 0 ? rawMaterials.map(m => {
-    const valPerBatch = m.afterTrial || m.normal || m.value || '—';
+    const valPerBatch = m.afterTrial || m.normal || m.value || m.before || '—';
     const numVal = parseFloat(valPerBatch);
     const totalVal = !isNaN(numVal) ? (numVal * batches).toFixed(2) : '—';
     return `<tr>
-      <td style="padding:8px;border:1px solid #cbd5e1;">${esc(m.parameter)}</td>
+      <td style="padding:8px;border:1px solid #cbd5e1;">${esc(m.name || m.parameter)}</td>
       <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;">${esc(valPerBatch)}</td>
       <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;">${batches}</td>
       <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;font-weight:bold;">${totalVal}</td>
