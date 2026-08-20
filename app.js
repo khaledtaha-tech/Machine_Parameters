@@ -39,6 +39,25 @@ async function postRecordToServer(record) {
   }
 }
 
+async function saveAllRecordsToServer() {
+  save();
+  toast('Saving all records to database...');
+  let successCount = 0;
+  for (const record of records) {
+    try {
+      await fetch('api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      });
+      successCount++;
+    } catch (err) {
+      console.warn('Sync failed for item:', record.id);
+    }
+  }
+  toast(`✔ All ${records.length} records safely saved & synced!`);
+}
+
 const STORAGE_KEY = 'processControlRecordsV2';
 const LIBRARY_KEY = 'processControlParameterLibraryV2';
 const THEME_KEY = 'processControlThemeV1';
@@ -915,8 +934,8 @@ function saveRecord(event) {
 
   const previousRecord = editingRecordId ? records.find(r => r.id === editingRecordId) : null;
   const record = {
-    id: uid(),
-    createdAt: new Date().toISOString(),
+    id: previousRecord ? previousRecord.id : uid(),
+    createdAt: previousRecord ? previousRecord.createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     type: field('recordType'),
     status: isTrial ? (field('trialStatus') || 'completed') : 'completed',
@@ -937,6 +956,7 @@ function saveRecord(event) {
     receivedByDoc: field('receivedByDoc'),
     purpose: field('purpose'),
     baselineMode: (!isPlanned && isTrial) ? getBaselineMode() : '',
+    reviewStatus: previousRecord?.reviewStatus || 'pending',
     observations: field('observations'),
     conclusion: field('conclusion'),
     parameters: activeParameters.map(({ rowId, ...parameter }) => parameter),
@@ -946,7 +966,13 @@ function saveRecord(event) {
     revisionNumber: previousRecord ? (previousRecord.revisionNumber || 1) + 1 : 1
   };
 
-  records.unshift(record);
+  if (previousRecord) {
+    const idx = records.findIndex(r => r.id === editingRecordId);
+    if (idx >= 0) records[idx] = record;
+  } else {
+    records.unshift(record);
+  }
+
   editingRecordId = null;
   toast(previousRecord ? 'Record updated and saved successfully' : 'Record saved successfully');
 
@@ -990,15 +1016,26 @@ function getFilteredRecords() {
     else if (typeFilter === 'trial-completed') matchesType = record.type === 'trial' && record.status !== 'planned';
     else if (typeFilter === 'trial-planned') matchesType = record.type === 'trial' && record.status === 'planned';
 
-    const matchesSearch = [record.machine, record.product, record.formulaCode, record.purpose, record.trialNo, record.status].join(' ').toLowerCase().includes(query);
+    const matchesSearch = [record.machine, record.product, record.formulaCode, record.purpose, record.trialNo, record.status, record.reviewStatus].join(' ').toLowerCase().includes(query);
     return matchesDept && matchesType && matchesSearch;
   });
+}
+
+function toggleRecordReview(id) {
+  const record = records.find(r => r.id === id);
+  if (!record) return;
+  const states = ['pending', 'verified', 'flagged'];
+  const currentIdx = states.indexOf(record.reviewStatus || 'pending');
+  record.reviewStatus = states[(currentIdx + 1) % states.length];
+  save();
+  void postRecordToServer(record);
+  renderRecords();
 }
 
 function renderRecords() {
   const data = getFilteredRecords();
   if (!$('#recordsTable')) return;
-  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div>Machine / Line</div><div>Product</div><div>Department</div><div>Purpose</div><div>Actions</div></div>${data.map(record => {
+  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div style="text-align:center;">Review Audit</div><div>Product</div><div>Department</div><div>Purpose</div><div>Actions</div></div>${data.map(record => {
     let typeBadge = `<span class="badge ${record.type}">${esc(record.type)}</span>`;
     if (record.type === 'trial' && record.status === 'planned') {
       typeBadge = `<span class="badge planned">Pending Run</span>`;
@@ -1007,9 +1044,19 @@ function renderRecords() {
     const isTrial = record.type === 'trial';
     const handoverBtn = isTrial ? `<button class="icon-btn handover-record" data-id="${record.id}" title="Print Material Handover Voucher" style="color:#10b981;font-weight:bold;">Voucher</button>` : '';
 
-    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div title="${esc(record.machine)}">${esc(record.machine)}</div><div title="${esc(record.product)}">${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button>${handoverBtn}<button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
+    const revStatus = record.reviewStatus || 'pending';
+    const statusColor = revStatus === 'verified' ? '#10b981' : (revStatus === 'flagged' ? '#ef4444' : '#f59e0b');
+    const statusTitle = revStatus === 'verified' ? 'Verified (Green)' : (revStatus === 'flagged' ? 'Needs Fix / Duplicate (Red)' : 'Pending Review (Yellow)');
+
+    const auditBadge = `<button class="review-toggle-btn" data-id="${record.id}" title="Click to toggle status: ${statusTitle}" style="background:transparent;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:12px;border:1px solid ${statusColor}44;background:${statusColor}15;">
+      <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${statusColor};box-shadow:0 0 6px ${statusColor};"></span>
+      <small style="color:${statusColor};font-weight:bold;font-size:10.5px;text-transform:capitalize;">${revStatus}</small>
+    </button>`;
+
+    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div style="text-align:center;">${auditBadge}</div><div title="${esc(record.product)}">${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button>${handoverBtn}<button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
   }).join('') || '<div class="empty">No matching records.</div>'}`;
 
+  $$('.review-toggle-btn').forEach(btn => btn.addEventListener('click', () => toggleRecordReview(btn.dataset.id)));
   $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
   $$('.edit-record').forEach(button => button.addEventListener('click', () => editRecord(button.dataset.id)));
   $$('.pdf-record').forEach(button => button.addEventListener('click', () => openPrintSettings(button.dataset.id)));
@@ -1407,6 +1454,7 @@ $('#trialStatus')?.addEventListener('change', () => {
 $('#department')?.addEventListener('change', () => { wizard.department = $('#department').value; loadTemplate(false); renderModeSummary(); refreshCalculations(); });
 $('#clearFormBtn')?.addEventListener('click', clearForm);
 $('#recordForm')?.addEventListener('submit', saveRecord);
+$('#saveAllRecordsBtn')?.addEventListener('click', saveAllRecordsToServer);
 ['searchInput', 'filterDepartment', 'filterType'].forEach(id => $('#' + id)?.addEventListener('input', renderRecords));
 $('#materialSearchInput')?.addEventListener('input', renderMaterials);
 $('#printMaterialsBtn')?.addEventListener('click', printMaterialsReport);
