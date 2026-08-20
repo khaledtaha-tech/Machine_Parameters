@@ -446,7 +446,8 @@ function openRecord(id) {
   const record = records.find(item => item.id === id);
   if (!record) return;
   selectedRecordId = id;
-  const content = $('#recordDetailContent');
+  
+  const content = $('#recordDetailContent') || $('#recordDetail');
   if (content) {
     const meta = recordMeta(record);
     const infoHtml = meta.map(([k, v]) => `<div class="detail-box"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
