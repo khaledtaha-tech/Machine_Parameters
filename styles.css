@@ -74,3 +74,70 @@ table tr td {
   padding: 4px !important;
   min-height: 35px !important;
 }
+/* 1.2.1 Responsive Sidebar on Zoom / Medium Screens */
+@media screen and (max-width: 1250px) {
+  body {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr !important;
+  }
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 16px !important;
+  }
+  .sidebar nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .sidebar .nav-btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+  .sidebar-footer {
+    display: none !important;
+  }
+  main {
+    padding: 12px 16px !important;
+    overflow-x: hidden !important;
+  }
+}
+
+/* 1.2.2 Compact Records Table Layout */
+.data-head,
+.data-row {
+  display: grid !important;
+  grid-template-columns: 95px 105px 120px 1.2fr 85px 1.5fr 140px !important;
+  gap: 8px !important;
+  align-items: center !important;
+  padding: 6px 10px !important;
+}
+
+.data-row {
+  border-bottom: 1px solid var(--line);
+  font-size: 12px !important;
+}
+
+.row-actions {
+  display: flex !important;
+  gap: 4px !important;
+  align-items: center !important;
+}
+
+.row-actions .icon-btn {
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+  height: 24px !important;
+}
+
+.badge.planned {
+  border: 1px solid #f59e0b !important;
+  color: #fbbf24 !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  white-space: nowrap !important;
+  padding: 2px 6px !important;
+  font-size: 10.5px !important;
+}

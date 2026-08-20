@@ -624,7 +624,7 @@ function normalizeScope(value) {
 function scopeMatches(scope, department) { return scope === 'common' || scope === department; }
 
 function isInformationName(name) {
-  return /^(trial no|trial number|record date|trial date|date|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|worker count|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
+  return /^(trial no|trial number|record date|trial date|date|trial or normal run date|running date|date of trial|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|worker count|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
 }
 
 function valueType(value, parameterName) {
@@ -654,13 +654,21 @@ function assignInformation(target, name, value) {
   if (isBlank(value)) return;
   const key = normalize(name);
   const map = {
-    'trial no': 'trialNo', 'trial number': 'trialNo', 'record date': 'recordDate', 'trial date': 'recordDate', 'date': 'recordDate',
-    'purpose': 'purpose', 'trial purpose': 'purpose', 'machine': 'machine', 'machine id': 'machine', 'machine line': 'machine', 'line': 'machine',
+    'trial no': 'trialNo', 'trial number': 'trialNo',
+    'record date': 'recordDate', 'trial date': 'recordDate', 'date': 'recordDate',
+    'trial or normal run date': 'recordDate', 'running date': 'recordDate', 'date of trial': 'recordDate',
+    'purpose': 'purpose', 'trial purpose': 'purpose',
+    'machine': 'machine', 'machine id': 'machine', 'machine line': 'machine', 'line': 'machine',
     'number of workers': 'workers', 'no of workers': 'workers', 'workers': 'workers', 'worker count': 'workers',
-    'product': 'product', 'product name': 'product', 'product code': 'formulaCode', 'formula code': 'formulaCode', 'code': 'formulaCode', 'color': 'color',
-    'no of cavities': 'cavities', 'number of cavities': 'cavities', 'cavities': 'cavities', 'no of batches': 'batches', 'number of batches': 'batches', 'batches': 'batches',
-    'preparing date': 'preparingDate', 'date of mixing': 'mixingDate', 'mixing date': 'mixingDate', 'date of pelletizing': 'pelletizingDate', 'pelletizing date': 'pelletizingDate',
-    'observations': 'observations', 'findings': 'observations', 'conclusion': 'conclusion', 'recommendation': 'conclusion', 'result': 'conclusion'
+    'product': 'product', 'product name': 'product',
+    'product code': 'formulaCode', 'formula code': 'formulaCode', 'code': 'formulaCode',
+    'color': 'color', 'no of cavities': 'cavities', 'number of cavities': 'cavities', 'cavities': 'cavities',
+    'no of batches': 'batches', 'number of batches': 'batches', 'batches': 'batches',
+    'preparing date': 'preparingDate',
+    'date of mixing': 'mixingDate', 'mixing date': 'mixingDate',
+    'date of pelletizing': 'pelletizingDate', 'pelletizing date': 'pelletizingDate',
+    'observations': 'observations', 'findings': 'observations',
+    'conclusion': 'conclusion', 'recommendation': 'conclusion', 'result': 'conclusion'
   };
   const field = map[key];
   if (field) target[field] = String(value).trim();
@@ -984,12 +992,13 @@ function getFilteredRecords() {
 function renderRecords() {
   const data = getFilteredRecords();
   if (!$('#recordsTable')) return;
-  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div>Machine / Line</div><div>Product</div><div>Department</div><div>Code</div><div>Actions</div></div>${data.map(record => {
+  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div>Machine / Line</div><div>Product</div><div>Department</div><div>Purpose</div><div>Actions</div></div>${data.map(record => {
     let typeBadge = `<span class="badge ${record.type}">${esc(record.type)}</span>`;
     if (record.type === 'trial' && record.status === 'planned') {
-      typeBadge = `<span class="badge trial" style="border:1px solid #f59e0b; color:#fbbf24; background:rgba(245,158,11,0.12);">Pending Run / Materials Only</span>`;
+      typeBadge = `<span class="badge planned">Pending Run</span>`;
     }
-    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div>${esc(record.machine)}</div><div>${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div>${esc(record.formulaCode || '—')}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button><button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
+    const purposeText = record.purpose ? esc(record.purpose) : '<span style="color:var(--muted);">—</span>';
+    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div title="${esc(record.machine)}">${esc(record.machine)}</div><div title="${esc(record.product)}">${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button><button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
   }).join('') || '<div class="empty">No matching records.</div>'}`;
 
   $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
