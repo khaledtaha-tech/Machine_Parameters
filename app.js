@@ -411,7 +411,7 @@ function editRecord(id) {
     trialStatus: record.status || (record.type === 'trial' ? 'completed' : '')
   });
 
-  const fields = ['recordDate', 'trialNo', 'machine', 'workers', 'product', 'formulaCode', 'color', 'cavities', 'batches', 'preparingDate', 'mixingDate', 'pelletizingDate', 'purpose', 'observations', 'conclusion'];
+  const fields = ['recordDate', 'trialNo', 'machine', 'workers', 'product', 'formulaCode', 'color', 'cavities', 'batches', 'preparingDate', 'mixingDate', 'pelletizingDate', 'materialHandover', 'receivedByDoc', 'purpose', 'observations', 'conclusion'];
   fields.forEach(f => {
     const val = record[f] || (f === 'recordDate' ? record.date : '');
     if ($('#' + f) && !isBlank(val)) $('#' + f).value = val;
@@ -420,7 +420,7 @@ function editRecord(id) {
   renderParameterTable();
   renderProductionPanel();
   switchView('new-record');
-  toast('Record loaded for editing/updating.');
+  toast('Record loaded for full editing.');
 }
 
 function openRecord(id) {
@@ -624,7 +624,7 @@ function normalizeScope(value) {
 function scopeMatches(scope, department) { return scope === 'common' || scope === department; }
 
 function isInformationName(name) {
-  return /^(trial no|trial number|record date|trial date|date|trial or normal run date|running date|date of trial|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|worker count|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
+  return /^(trial no|trial number|record date|trial date|date|trial or normal run date|running date|date of trial|purpose|trial purpose|machine|machine id|machine line|line|number of workers|no of workers|workers|no of people|number of people|worker count|product|product name|product code|formula code|code|color|no of cavities|number of cavities|cavities|no of batches|number of batches|batches|preparing date|date of mixing|mixing date|date of pelletizing|pelletizing date|material handover|handover status|received by \/ doc no|received by|doc no|observations|findings|conclusion|recommendation|result)$/.test(normalize(name));
 }
 
 function valueType(value, parameterName) {
@@ -660,6 +660,7 @@ function assignInformation(target, name, value) {
     'purpose': 'purpose', 'trial purpose': 'purpose',
     'machine': 'machine', 'machine id': 'machine', 'machine line': 'machine', 'line': 'machine',
     'number of workers': 'workers', 'no of workers': 'workers', 'workers': 'workers', 'worker count': 'workers',
+    'no of people': 'workers', 'number of people': 'workers',
     'product': 'product', 'product name': 'product',
     'product code': 'formulaCode', 'formula code': 'formulaCode', 'code': 'formulaCode',
     'color': 'color', 'no of cavities': 'cavities', 'number of cavities': 'cavities', 'cavities': 'cavities',
@@ -667,6 +668,8 @@ function assignInformation(target, name, value) {
     'preparing date': 'preparingDate',
     'date of mixing': 'mixingDate', 'mixing date': 'mixingDate',
     'date of pelletizing': 'pelletizingDate', 'pelletizing date': 'pelletizingDate',
+    'material handover': 'materialHandover', 'handover status': 'materialHandover',
+    'received by / doc no': 'receivedByDoc', 'received by': 'receivedByDoc', 'doc no': 'receivedByDoc',
     'observations': 'observations', 'findings': 'observations',
     'conclusion': 'conclusion', 'recommendation': 'conclusion', 'result': 'conclusion'
   };
@@ -865,7 +868,9 @@ function confirmImport() {
   const info = pendingImport.information;
   const values = {
     trialNo: info.trialNo, recordDate: toInputDate(info.recordDate) || new Date().toISOString().slice(0, 10), machine: info.machine, workers: info.workers, product: info.product,
-    formulaCode: info.formulaCode, color: info.color, cavities: info.cavities, batches: info.batches, preparingDate: toInputDate(info.preparingDate), mixingDate: toInputDate(info.mixingDate), pelletizingDate: toInputDate(info.pelletizingDate), purpose: info.purpose, observations: info.observations, conclusion: info.conclusion
+    formulaCode: info.formulaCode, color: info.color, cavities: info.cavities, batches: info.batches, preparingDate: toInputDate(info.preparingDate), mixingDate: toInputDate(info.mixingDate), pelletizingDate: toInputDate(info.pelletizingDate),
+    materialHandover: info.materialHandover, receivedByDoc: info.receivedByDoc,
+    purpose: info.purpose, observations: info.observations, conclusion: info.conclusion
   };
   Object.entries(values).forEach(([id, value]) => { if ($('#' + id) && !isBlank(value)) $('#' + id).value = value; });
   activeParameters = pendingImport.parameters.map(parameter => ({ ...parameter, rowId: uid() }));
@@ -929,6 +934,8 @@ function saveRecord(event) {
     preparingDate: field('preparingDate'),
     mixingDate: field('mixingDate'),
     pelletizingDate: field('pelletizingDate'),
+    materialHandover: field('materialHandover'),
+    receivedByDoc: field('receivedByDoc'),
     purpose: field('purpose'),
     baselineMode: (!isPlanned && isTrial) ? getBaselineMode() : '',
     observations: field('observations'),
@@ -942,7 +949,7 @@ function saveRecord(event) {
 
   records.unshift(record);
   editingRecordId = null;
-  toast(previousRecord ? 'New record version saved; previous version preserved' : (isPlanned ? 'Raw materials proof saved successfully' : 'Record saved successfully'));
+  toast(previousRecord ? 'Record updated and saved successfully' : 'Record saved successfully');
 
   save();
   void postRecordToServer(record);
@@ -998,12 +1005,16 @@ function renderRecords() {
       typeBadge = `<span class="badge planned">Pending Run</span>`;
     }
     const purposeText = record.purpose ? esc(record.purpose) : '<span style="color:var(--muted);">—</span>';
-    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div title="${esc(record.machine)}">${esc(record.machine)}</div><div title="${esc(record.product)}">${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button><button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
+    const isTrial = record.type === 'trial';
+    const handoverBtn = isTrial ? `<button class="icon-btn handover-record" data-id="${record.id}" title="Print Material Handover Voucher" style="color:#10b981;font-weight:bold;">Voucher</button>` : '';
+
+    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div title="${esc(record.machine)}">${esc(record.machine)}</div><div title="${esc(record.product)}">${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button>${handoverBtn}<button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
   }).join('') || '<div class="empty">No matching records.</div>'}`;
 
   $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
   $$('.edit-record').forEach(button => button.addEventListener('click', () => editRecord(button.dataset.id)));
   $$('.pdf-record').forEach(button => button.addEventListener('click', () => openPrintSettings(button.dataset.id)));
+  $$('.handover-record').forEach(button => button.addEventListener('click', () => printHandoverVoucher(button.dataset.id)));
   $$('.delete-record').forEach(button => button.addEventListener('click', () => { if (confirm('Delete this record?')) { records = records.filter(record => record.id !== button.dataset.id); save(); renderRecords(); renderDashboard(); renderMaterials(); } }));
 }
 
@@ -1493,3 +1504,114 @@ document.addEventListener('click', e => {
     printRecord(currentPrintRecordId, { hideFormulation, hiddenParams, hiddenMeta });
   }
 });
+
+function printHandoverVoucher(id) {
+  const record = records.find(item => item.id === id);
+  if (!record) return;
+
+  const rawMaterials = (record.parameters || []).filter(p => {
+    const grp = normalize(p.group || '');
+    return grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe');
+  });
+
+  const batches = Number(record.batches) || 1;
+
+  const materialsRows = rawMaterials.length > 0 ? rawMaterials.map(m => {
+    const valPerBatch = m.afterTrial || m.normal || m.value || '—';
+    const numVal = parseFloat(valPerBatch);
+    const totalVal = !isNaN(numVal) ? (numVal * batches).toFixed(2) : '—';
+    return `<tr>
+      <td style="padding:8px;border:1px solid #cbd5e1;">${esc(m.parameter)}</td>
+      <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;">${esc(valPerBatch)}</td>
+      <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;">${batches}</td>
+      <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;font-weight:bold;">${totalVal}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#64748b;border:1px solid #cbd5e1;">No specific raw material formulation items found.</td></tr>`;
+
+  const voucherHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Material Handover Voucher - Trial ${esc(record.trialNo || record.id)}</title>
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #0f172a; margin: 20px; line-height: 1.4; }
+        .header-box { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .title { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+        .doc-meta { font-size: 12px; color: #475569; text-align: right; }
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; font-size: 13px; }
+        .meta-card { background: #f8fafc; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+        th { background: #0f172a; color: white; padding: 8px; border: 1px solid #0f172a; text-align: center; }
+        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 35px; }
+        .sign-box { border-top: 1.5px solid #0f172a; padding-top: 8px; text-align: center; font-size: 13px; font-weight: bold; }
+        .sign-line { margin-top: 40px; }
+        @media print { body { margin: 10mm; } }
+      </style>
+    </head>
+    <body>
+      <div class="header-box">
+        <div>
+          <div class="title">Material Handover & Receipt Voucher</div>
+          <div style="font-size: 12px; color: #64748b;">Process Control & Raw Materials Section</div>
+        </div>
+        <div class="doc-meta">
+          <div><strong>Date:</strong> ${esc(record.date)}</div>
+          <div><strong>Trial No:</strong> ${esc(record.trialNo || 'N/A')}</div>
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-card">
+          <div><strong>Product / Application:</strong> ${esc(record.product)} (${esc(record.department)})</div>
+          <div><strong>Purpose:</strong> ${esc(record.purpose || 'Trial Batch')}</div>
+          <div><strong>Formula Code:</strong> ${esc(record.formulaCode || 'N/A')}</div>
+        </div>
+        <div class="meta-card">
+          <div><strong>Handover Status:</strong> <span style="color:#0369a1;font-weight:bold;">${esc(record.materialHandover || 'Delivered')}</span></div>
+          <div><strong>Received By / Doc No:</strong> <span style="font-weight:bold;">${esc(record.receivedByDoc || 'N/A')}</span></div>
+          <div><strong>Batches Count:</strong> ${batches}</div>
+        </div>
+      </div>
+
+      <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px;">Raw Materials Issued for Trial:</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left;">Material / Ingredient</th>
+            <th>Per Batch Quantity</th>
+            <th>Batches</th>
+            <th>Total Issued Quantity</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${materialsRows}
+        </tbody>
+      </table>
+
+      <div class="signatures">
+        <div class="sign-box">
+          Issued & Prepared By (Raw Materials Dept.)
+          <div class="sign-line">Signature: ______________________</div>
+        </div>
+        <div class="sign-box">
+          Received By (Production / Warehouse Dept.)
+          <div class="sign-line">Signature: ______________________</div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.open();
+    printWindow.document.write(voucherHtml);
+    printWindow.document.close();
+  }
+}
