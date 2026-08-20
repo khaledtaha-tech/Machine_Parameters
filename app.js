@@ -740,7 +740,7 @@ function parseExcelWorkbook(workbook, classification) {
     const group = String(cell(row, columns.group) || (type === 'Information' ? 'Information' : 'Imported')).trim();
 
     if (type === 'Information' || isInformationName(name)) {
-      const informationValue = classification.type === 'trial' ? (isBlank(trialValue) ? normalValue : trialValue) : (isBlank(normalValue) ? trialValue : normalValue);
+      const informationValue = classification.type === 'trial' ? (isBlank(normalValue) ? trialValue : normalValue) : (isBlank(normalValue) ? trialValue : normalValue);
       assignInformation(result.information, name, informationValue);
       continue;
     }
@@ -1013,7 +1013,7 @@ function renderRecords() {
   $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
   $$('.edit-record').forEach(button => button.addEventListener('click', () => editRecord(button.dataset.id)));
   $$('.pdf-record').forEach(button => button.addEventListener('click', () => openPrintSettings(button.dataset.id)));
-  $$('.handover-record').forEach(button => button.addEventListener('click', () => printHandoverVoucher(button.dataset.id)));
+  $$('.handover-record').forEach(button => button.addEventListener('click', () => openVoucherSettings(button.dataset.id)));
   $$('.delete-record').forEach(button => button.addEventListener('click', () => { if (confirm('Delete this record?')) { records = records.filter(record => record.id !== button.dataset.id); save(); renderRecords(); renderDashboard(); renderMaterials(); } }));
 }
 
@@ -1429,11 +1429,13 @@ renderDashboard();
 window.__processControlTest = { parseExcelWorkbook, calculatePipeOutput, difference, normalizeScope };
 
 let currentPrintRecordId = null;
+let currentVoucherRecordId = null;
 
 function openPrintSettings(id) {
   const record = records.find(item => item.id === id);
   if (!record) return;
   currentPrintRecordId = id;
+  currentVoucherRecordId = null;
 
   const metaItems = recordMeta(record);
   const parameters = record.parameters || [];
@@ -1489,13 +1491,63 @@ function openPrintSettings(id) {
   dialog.showModal();
 }
 
+function openVoucherSettings(id) {
+  const record = records.find(item => item.id === id);
+  if (!record) return;
+  currentVoucherRecordId = id;
+  currentPrintRecordId = null;
+
+  const rawMaterials = (record.parameters || []).filter(p => {
+    const grp = normalize(p.group || '');
+    return grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe') || isFormulaMaterial(p.group, p.name);
+  });
+
+  let html = '<div style="display:grid; gap:12px;">';
+  html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
+  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Header &amp; Information Fields to Hide</strong>';
+  html += '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">';
+
+  ['Purpose', 'Formula Code', 'Handover Status', 'Received By / Doc No', 'Batches Count'].forEach(item => {
+    html += `<label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
+               <input type="checkbox" class="hide-meta-cb" value="${esc(item)}" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
+               <span style="font-size:12px; color:var(--text);">${esc(item)}</span>
+             </label>`;
+  });
+
+  html += '</div></div>';
+
+  html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
+  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Raw Materials to Hide</strong>';
+  html += '<div style="display:grid; gap:8px;">';
+
+  rawMaterials.forEach(m => {
+    const matName = m.name || m.parameter;
+    html += `<label style="display:flex; gap:12px; align-items:center; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
+               <input type="checkbox" class="hide-param-cb" value="${esc(matName)}" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
+               <div><strong style="display:block; color:var(--text); font-size:12.5px;">${esc(matName)}</strong></div>
+             </label>`;
+  });
+
+  html += '</div></div></div>';
+
+  const content = document.querySelector('#printSettingsContent');
+  const dialog = document.querySelector('#printSettingsDialog');
+  if (!content || !dialog) { toast('Settings dialog is unavailable.'); return; }
+  content.innerHTML = html;
+  dialog.showModal();
+}
+
 document.addEventListener('click', e => {
   if (e.target.closest('#closePrintSettings')) {
     document.querySelector('#printSettingsDialog')?.close();
   }
   if (e.target.closest('#cancelPrintBtn')) {
     document.querySelector('#printSettingsDialog')?.close();
-    printRecord(currentPrintRecordId);
+    if (currentVoucherRecordId) {
+      printHandoverVoucher(currentVoucherRecordId);
+    } else if (currentPrintRecordId) {
+      printRecord(currentPrintRecordId);
+    }
   }
 });
 
@@ -1506,17 +1558,23 @@ document.addEventListener('click', e => {
     const hiddenParams = Array.from(document.querySelectorAll('.hide-param-cb:checked')).map(cb => cb.value);
     const hiddenMeta = Array.from(document.querySelectorAll('.hide-meta-cb:checked')).map(cb => cb.value);
     document.querySelector('#printSettingsDialog')?.close();
-    printRecord(currentPrintRecordId, { hideFormulation, hiddenParams, hiddenMeta });
+    
+    if (currentVoucherRecordId) {
+      printHandoverVoucher(currentVoucherRecordId, { hiddenParams, hiddenMeta });
+    } else if (currentPrintRecordId) {
+      printRecord(currentPrintRecordId, { hideFormulation, hiddenParams, hiddenMeta });
+    }
   }
 });
 
-function printHandoverVoucher(id) {
+function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: [] }) {
   const record = records.find(item => item.id === id);
   if (!record) return;
 
   const rawMaterials = (record.parameters || []).filter(p => {
     const grp = normalize(p.group || '');
-    return grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe') || isFormulaMaterial(p.group, p.name);
+    const isMat = grp.includes('raw') || grp.includes('material') || grp.includes('formulation') || grp.includes('recipe') || isFormulaMaterial(p.group, p.name);
+    return isMat && !hideOptions.hiddenParams.includes(p.name || p.parameter);
   });
 
   const batches = Number(record.batches) || 1;
@@ -1532,6 +1590,12 @@ function printHandoverVoucher(id) {
       <td style="padding:8px;border:1px solid #cbd5e1;text-align:center;font-weight:bold;">${totalVal}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#64748b;border:1px solid #cbd5e1;">No specific raw material formulation items found.</td></tr>`;
+
+  const showPurpose = !hideOptions.hiddenMeta.includes('Purpose');
+  const showFormula = !hideOptions.hiddenMeta.includes('Formula Code');
+  const showStatus = !hideOptions.hiddenMeta.includes('Handover Status');
+  const showReceived = !hideOptions.hiddenMeta.includes('Received By / Doc No');
+  const showBatches = !hideOptions.hiddenMeta.includes('Batches Count');
 
   const voucherHtml = `
     <!DOCTYPE html>
@@ -1556,8 +1620,8 @@ function printHandoverVoucher(id) {
     <body>
       <div class="header-box">
         <div>
-          <div class="title">Material Handover & Receipt Voucher</div>
-          <div style="font-size: 12px; color: #64748b;">Process Control & Raw Materials Section</div>
+          <div class="title">Material Handover &amp; Receipt Voucher</div>
+          <div style="font-size: 12px; color: #64748b;">Process Control &amp; Raw Materials Section</div>
         </div>
         <div class="doc-meta">
           <div><strong>Date:</strong> ${esc(record.date)}</div>
@@ -1568,13 +1632,13 @@ function printHandoverVoucher(id) {
       <div class="meta-grid">
         <div class="meta-card">
           <div><strong>Product / Application:</strong> ${esc(record.product)} (${esc(record.department)})</div>
-          <div><strong>Purpose:</strong> ${esc(record.purpose || 'Trial Batch')}</div>
-          <div><strong>Formula Code:</strong> ${esc(record.formulaCode || 'N/A')}</div>
+          ${showPurpose ? `<div><strong>Purpose:</strong> ${esc(record.purpose || 'Trial Batch')}</div>` : ''}
+          ${showFormula ? `<div><strong>Formula Code:</strong> ${esc(record.formulaCode || 'N/A')}</div>` : ''}
         </div>
         <div class="meta-card">
-          <div><strong>Handover Status:</strong> <span style="color:#0369a1;font-weight:bold;">${esc(record.materialHandover || 'Delivered')}</span></div>
-          <div><strong>Received By / Doc No:</strong> <span style="font-weight:bold;">${esc(record.receivedByDoc || 'N/A')}</span></div>
-          <div><strong>Batches Count:</strong> ${batches}</div>
+          ${showStatus ? `<div><strong>Handover Status:</strong> <span style="color:#0369a1;font-weight:bold;">${esc(record.materialHandover || 'Delivered to Production')}</span></div>` : ''}
+          ${showReceived ? `<div><strong>Received By / Doc No:</strong> <span style="font-weight:bold;">${esc(record.receivedByDoc || 'N/A')}</span></div>` : ''}
+          ${showBatches ? `<div><strong>Batches Count:</strong> ${batches}</div>` : ''}
         </div>
       </div>
 
@@ -1595,11 +1659,11 @@ function printHandoverVoucher(id) {
 
       <div class="signatures">
         <div class="sign-box">
-          Issued & Prepared By (Raw Materials Dept.)
+          Issued &amp; Prepared By (Raw Materials Dept.)
           <div class="sign-line">Signature: ______________________</div>
         </div>
         <div class="sign-box">
-          Received By (Production / Warehouse Dept.)
+          Received By (Production / Warehouse / Costing Dept.)
           <div class="sign-line">Signature: ______________________</div>
         </div>
       </div>
