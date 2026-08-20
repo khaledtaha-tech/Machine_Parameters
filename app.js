@@ -1019,10 +1019,30 @@ function toggleRecordReview(id) {
   renderRecords();
 }
 
+function getDisplayFormulaCode(record) {
+  const codeParam = (record.parameters || []).find(p => normalize(p.name) === 'formula code' || normalize(p.parameter) === 'formula code');
+  
+  if (codeParam) {
+    if (codeParam.after && String(codeParam.after).trim() !== '') return codeParam.after.trim();
+    if (codeParam.value && String(codeParam.value).trim() !== '') return codeParam.value.trim();
+    if (codeParam.before && String(codeParam.before).trim() !== '') return codeParam.before.trim();
+  }
+
+  const rawCode = String(record.formulaCode || '').trim();
+  if (!rawCode) return '—';
+
+  if (rawCode.includes('->')) {
+    const parts = rawCode.split('->').map(s => s.trim());
+    return parts[1] || parts[0] || '—';
+  }
+
+  return rawCode;
+}
+
 function renderRecords() {
   const data = getFilteredRecords();
   if (!$('#recordsTable')) return;
-  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div style="text-align:center;">Review Audit</div><div>Product</div><div>Department</div><div>Purpose</div><div>Actions</div></div>${data.map(record => {
+  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div style="text-align:center;">Review Audit</div><div>Formula Code</div><div>Department</div><div>Purpose</div><div>Actions</div></div>${data.map(record => {
     let typeBadge = `<span class="badge ${record.type}">${esc(record.type)}</span>`;
     if (record.type === 'trial' && record.status === 'planned') {
       typeBadge = `<span class="badge planned">Pending Run</span>`;
@@ -1040,7 +1060,9 @@ function renderRecords() {
       <small style="color:${statusColor};font-weight:bold;font-size:10.5px;text-transform:capitalize;">${revStatus}</small>
     </button>`;
 
-    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div style="text-align:center;">${auditBadge}</div><div title="${esc(record.product)}">${esc(record.product)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button>${handoverBtn}<button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
+    const displayFormula = getDisplayFormulaCode(record);
+
+    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div style="text-align:center;">${auditBadge}</div><div title="${esc(displayFormula)}" style="font-weight:bold; color:var(--accent);">${esc(displayFormula)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button>${handoverBtn}<button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
   }).join('') || '<div class="empty">No matching records.</div>'}`;
 
   $$('.review-toggle-btn').forEach(btn => btn.addEventListener('click', () => toggleRecordReview(btn.dataset.id)));
