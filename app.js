@@ -446,25 +446,53 @@ function openRecord(id) {
   const record = records.find(item => item.id === id);
   if (!record) return;
   selectedRecordId = id;
+
+  const dialog = $('#recordDialog');
+  if (!dialog) return;
+
+  const meta = recordMeta(record);
+  const infoHtml = meta.map(([k, v]) => `
+    <div class="detail-box" style="background:var(--panel2, #1e293b); border:1px solid var(--line, #334155); border-radius:6px; padding:6px 10px;">
+      <span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">${esc(k)}</span>
+      <strong style="color:var(--text, #f8fafc); font-size:12px;">${esc(v)}</strong>
+    </div>
+  `).join('');
+
+  const builtHtml = `
+    <div class="detail-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-bottom:12px;">
+      ${infoHtml}
+    </div>
+    ${record.purpose ? `<div class="detail-box" style="background:var(--panel2, #1e293b); border-left:3px solid var(--accent, #38bdf8); border-radius:4px; padding:8px 12px; margin-bottom:12px;"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Purpose</span><p style="margin:2px 0 0; color:var(--text, #f8fafc); font-size:12.5px;">${esc(record.purpose)}</p></div>` : ''}
+    ${productionHtml(record, false)}
+    <div style="margin-top:12px; overflow-x:auto;">
+      ${recordParameterTable(record, false)}
+    </div>
+    ${(record.observations || record.conclusion) ? `
+      <div class="detail-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+        ${record.observations ? `<div class="detail-box" style="background:var(--panel2, #1e293b); padding:8px; border-radius:6px; border:1px solid var(--line, #334155);"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Observations</span><p style="margin:4px 0 0; font-size:11.5px; color:var(--text, #f8fafc);">${esc(record.observations)}</p></div>` : ''}
+        ${record.conclusion ? `<div class="detail-box" style="background:var(--panel2, #1e293b); padding:8px; border-radius:6px; border:1px solid var(--line, #334155);"><span style="font-size:10px; color:var(--muted, #94a3b8); display:block; text-transform:uppercase;">Conclusion</span><p style="margin:4px 0 0; font-size:11.5px; color:var(--text, #f8fafc);">${esc(record.conclusion)}</p></div>` : ''}
+      </div>
+    ` : ''}
+  `;
+
+  // البحث عن الحاوية أو إنشاؤها تلقائياً داخل النافذة
+  let content = dialog.querySelector('#recordDetailContent') || dialog.querySelector('#recordDetail') || dialog.querySelector('.dialog-body') || dialog.querySelector('.record-detail-body');
   
-  const content = $('#recordDetailContent') || $('#recordDetail');
-  if (content) {
-    const meta = recordMeta(record);
-    const infoHtml = meta.map(([k, v]) => `<div class="detail-box"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
-    content.innerHTML = `
-      <div class="detail-grid">${infoHtml}</div>
-      ${record.purpose ? `<div class="detail-box" style="margin-top:8px;"><span>Purpose</span><p>${esc(record.purpose)}</p></div>` : ''}
-      ${productionHtml(record, false)}
-      <div style="margin-top:12px;">${recordParameterTable(record, false)}</div>
-      ${(record.observations || record.conclusion) ? `
-        <div class="detail-grid" style="margin-top:12px;">
-          ${record.observations ? `<div class="detail-box"><span>Observations</span><p>${esc(record.observations)}</p></div>` : ''}
-          ${record.conclusion ? `<div class="detail-box"><span>Conclusion</span><p>${esc(record.conclusion)}</p></div>` : ''}
-        </div>
-      ` : ''}
-    `;
+  if (!content) {
+    content = document.createElement('div');
+    content.id = 'recordDetailContent';
+    content.className = 'record-detail-body';
+    content.style.cssText = 'margin:12px 0; max-height:65vh; overflow-y:auto; padding-right:4px;';
+    const footer = dialog.querySelector('.dialog-foot') || dialog.querySelector('.modal-footer') || dialog.querySelector('#dialogPdfBtn')?.parentElement;
+    if (footer) {
+      dialog.insertBefore(content, footer);
+    } else {
+      dialog.appendChild(content);
+    }
   }
-  $('#recordDialog')?.showModal();
+
+  content.innerHTML = builtHtml;
+  dialog.showModal();
 }
 
 function filteredLibrary() {
