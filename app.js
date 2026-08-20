@@ -195,6 +195,10 @@ let editingRecordId = null;
 let pendingImport = null;
 let wizard = { step: 'type', type: '', trialStatus: 'completed', department: '', baselineMode: 'running_with_before' };
 
+let currentPrintRecordId = null;
+let currentVoucherRecordId = null;
+let currentMaterialsAuditPrint = false;
+
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -1157,10 +1161,59 @@ function renderMaterials() {
   }
 }
 
-function printMaterialsReport() {
+function openMaterialsPrintSettings() {
+  const { summary } = extractTrialMaterials();
+  currentMaterialsAuditPrint = true;
+  currentVoucherRecordId = null;
+  currentPrintRecordId = null;
+
+  let html = '<div style="display:grid; gap:12px;">';
+
+  html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
+  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Sections to Hide</strong>';
+  html += '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">';
+
+  ['Summary Cards', 'Consolidated Material Summary Table', 'Detailed Consumption Log Table'].forEach(sec => {
+    html += `<label style="display:flex; gap:10px; align-items:center; cursor:pointer;">
+               <input type="checkbox" class="hide-meta-cb" value="${esc(sec)}" style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;">
+               <span style="font-size:12px; color:var(--text);">${esc(sec)}</span>
+             </label>`;
+  });
+
+  html += '</div></div>';
+
+  html += '<div style="background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px;">';
+  html += '<strong style="display:block; color:var(--accent); font-size:12px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Raw Materials to Hide from Report</strong>';
+  html += '<div style="display:grid; gap:8px;">';
+
+  summary.forEach(item => {
+    html += `<label style="display:flex; gap:12px; align-items:center; padding:8px 10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; cursor:pointer;">
+               <input type="checkbox" class="hide-param-cb" value="${esc(item.name)}" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
+               <div><strong style="display:block; color:var(--text); font-size:12.5px;">${esc(item.name)}</strong><small style="color:var(--muted); font-size:11px;">Total: ${item.totalQty.toFixed(2)} ${esc(item.unit)} (${item.count} trials)</small></div>
+             </label>`;
+  });
+
+  html += '</div></div></div>';
+
+  const content = document.querySelector('#printSettingsContent');
+  const dialog = document.querySelector('#printSettingsDialog');
+  if (!content || !dialog) { toast('Print settings dialog unavailable.'); return; }
+  content.innerHTML = html;
+  dialog.showModal();
+}
+
+function printMaterialsReport(hideOptions = { hiddenParams: [], hiddenMeta: [] }) {
   const { details, summary } = extractTrialMaterials();
   const generatedAt = new Date().toLocaleString();
-  let totalKg = summary.reduce((sum, item) => sum + item.totalQty, 0);
+
+  const filteredSummary = summary.filter(s => !hideOptions.hiddenParams.includes(s.name));
+  const filteredDetails = details.filter(d => !hideOptions.hiddenParams.includes(d.material));
+
+  let totalKg = filteredSummary.reduce((sum, item) => sum + item.totalQty, 0);
+
+  const showCards = !hideOptions.hiddenMeta.includes('Summary Cards');
+  const showSummaryTable = !hideOptions.hiddenMeta.includes('Consolidated Material Summary Table');
+  const showDetailedTable = !hideOptions.hiddenMeta.includes('Detailed Consumption Log Table');
 
   const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Trial Raw Materials Consumption Report</title><style>
     @page { size: A4 portrait; margin: 8mm; }
@@ -1169,7 +1222,7 @@ function printMaterialsReport() {
     header { border-bottom: 2.5px solid #109f83; padding-bottom: 4px; margin-bottom: 8px; }
     h1 { font-size: 18px; margin: 0 0 3px; color: #109f83; }
     h2 { font-size: 11px; color: #467083; margin: 0; }
-    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
+    .summary-grid { display: ${showCards ? 'grid' : 'none'}; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
     .summary-card { border: 1px solid #ccd9df; border-radius: 4px; padding: 6px 8px; background: #fafcfc; }
     .summary-card span { display: block; color: #6b8290; font-size: 7.5px; text-transform: uppercase; margin-bottom: 2px; }
     .summary-card strong { font-size: 11px; color: #142330; }
@@ -1182,26 +1235,32 @@ function printMaterialsReport() {
     <header><h1>Trial Raw Materials Consumption Audit</h1><h2>Non-Inventory Trial Raw Materials Record</h2></header>
     <div class="summary-grid">
       <div class="summary-card"><span>Total Raw Materials</span><strong>${totalKg.toFixed(2)} kg</strong></div>
-      <div class="summary-card"><span>Materials Types</span><strong>${summary.length} items</strong></div>
-      <div class="summary-card"><span>Logged Entries</span><strong>${details.length} logs</strong></div>
+      <div class="summary-card"><span>Materials Types</span><strong>${filteredSummary.length} items</strong></div>
+      <div class="summary-card"><span>Logged Entries</span><strong>${filteredDetails.length} logs</strong></div>
       <div class="summary-card"><span>Audit Status</span><strong>Verified</strong></div>
     </div>
-    <h3 style="margin:8px 0 3px;font-size:11px;color:#214352;">Consolidated Material Summary</h3>
-    <table><thead><tr><th style="width:40px;">#</th><th>Raw Material</th><th style="width:100px;">Trials Count</th><th style="width:130px;">Total Consumed</th></tr></thead><tbody>
-      ${summary.map((item, idx) => `<tr><td>${idx + 1}</td><td><strong>${esc(item.name)}</strong></td><td>${item.count}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('')}
-    </tbody></table>
-    <h3 style="margin:12px 0 3px;font-size:11px;color:#214352;">Detailed Consumption Log</h3>
-    <table><thead><tr><th style="width:30px;">#</th><th style="width:75px;">Date</th><th style="width:75px;">Trial No</th><th style="width:75px;">Status</th><th>Product</th><th>Material</th><th style="width:65px;">Qty/Batch</th><th style="width:50px;">Batches</th><th style="width:75px;">Total Qty</th></tr></thead><tbody>
-      ${details.map((item, idx) => `<tr><td>${idx + 1}</td><td>${esc(item.date)}</td><td>${esc(item.trialNo)}</td><td>${esc(item.status)}</td><td>${esc(item.product)}</td><td>${esc(item.material)}</td><td>${item.unitQty} ${esc(item.unit)}</td><td>${item.batches}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('')}
-    </tbody></table>
+
+    ${showSummaryTable ? `
+      <h3 style="margin:8px 0 3px;font-size:11px;color:#214352;">Consolidated Material Summary</h3>
+      <table><thead><tr><th style="width:40px;">#</th><th>Raw Material</th><th style="width:100px;">Trials Count</th><th style="width:130px;">Total Consumed</th></tr></thead><tbody>
+        ${filteredSummary.map((item, idx) => `<tr><td>${idx + 1}</td><td><strong>${esc(item.name)}</strong></td><td>${item.count}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;">No items</td></tr>'}
+      </tbody></table>
+    ` : ''}
+
+    ${showDetailedTable ? `
+      <h3 style="margin:12px 0 3px;font-size:11px;color:#214352;">Detailed Consumption Log</h3>
+      <table><thead><tr><th style="width:30px;">#</th><th style="width:75px;">Date</th><th style="width:75px;">Trial No</th><th style="width:75px;">Status</th><th>Product</th><th>Material</th><th style="width:65px;">Qty/Batch</th><th style="width:50px;">Batches</th><th style="width:75px;">Total Qty</th></tr></thead><tbody>
+        ${filteredDetails.map((item, idx) => `<tr><td>${idx + 1}</td><td>${esc(item.date)}</td><td>${esc(item.trialNo)}</td><td>${esc(item.status)}</td><td>${esc(item.product)}</td><td>${esc(item.material)}</td><td>${item.unitQty} ${esc(item.unit)}</td><td>${item.batches}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('') || '<tr><td colspan="9" style="text-align:center;">No items</td></tr>'}
+      </tbody></table>
+    ` : ''}
+
     <div class="footer">Generated ${esc(generatedAt)}</div>
     <script>window.addEventListener('load', () => setTimeout(() => window.print(), 200));<\/script>
   </body></html>`;
 
   const reportWindow = window.open('', '_blank', 'width=1100,height=800');
   if (!reportWindow) { toast('Allow pop-ups to print the report.'); return; }
-  reportWindow.document.write(doc);
-  reportWindow.document.close();
+  reportWindow.document.documentElement.innerHTML = doc;
 }
 
 function importJsonFile(file) {
@@ -1513,65 +1572,12 @@ function renderLibrary() {
   $$('.lib-delete').forEach(button => button.addEventListener('click', () => { if (confirm('Delete this parameter?')) { library = library.filter(parameter => parameter.id !== button.dataset.id); saveLibrary(); renderLibrary(); renderPicker(); } }));
 }
 
-$$('.nav-btn').forEach(button => button.addEventListener('click', () => button.dataset.view === 'new-record' ? openNewRecordWizard() : switchView(button.dataset.view)));
-$$('[data-go]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.go)));
-$('#quickNewBtn')?.addEventListener('click', () => openNewRecordWizard());
-$('#themeToggle')?.addEventListener('click', () => applyTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark'));
-$('#closeWizard')?.addEventListener('click', () => $('#newRecordWizard').close());
-$('#wizardBack')?.addEventListener('click', wizardBack);
-$('#wizardContent')?.addEventListener('click', event => { const choice = event.target.closest('[data-choice]'); if (choice) handleWizardChoice(choice.dataset.choice); });
-$('#addParameterBtn')?.addEventListener('click', () => { addParameter(library.find(parameter => parameter.id === $('#parameterPicker').value)); renderParameterTable(); });
-$('#loadTemplateBtn')?.addEventListener('click', () => loadTemplate(true));
-$('#addCustomBtn')?.addEventListener('click', () => { const name = prompt('Custom parameter name:'); if (!name) return; const unit = prompt('Unit (optional):') || ''; activeParameters.push({ rowId: uid(), libraryId: null, name, unit, group: 'Custom', valueType: 'Comparison', scope: $('#department').value, before: '', after: '', value: '' }); renderParameterTable(); });
-$('#importExcelBtn')?.addEventListener('click', () => { wizard = { step: 'source', type: $('#recordType').value, department: $('#department').value, baselineMode: getBaselineMode() || 'running_with_before', trialStatus: $('#trialStatus')?.value || 'completed' }; $('#excelFileInput').value = ''; $('#excelFileInput').click(); });
-$('#excelFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) readExcelFile(file); });
-$('#closeImportPreview')?.addEventListener('click', () => $('#importPreviewDialog').close());
-$('#cancelImportBtn')?.addEventListener('click', () => { pendingImport = null; $('#importPreviewDialog').close(); });
-$('#confirmImportBtn')?.addEventListener('click', confirmImport);
-$('#recordType')?.addEventListener('change', () => {
-  if ($('#recordType').value === 'trial' && !wizard.baselineMode) wizard.baselineMode = 'running_with_before';
-  activeImportMeta = { ...(activeImportMeta || {}), baselineMode: $('#recordType').value === 'trial' ? wizard.baselineMode : '' };
-  renderModeSummary();
-  refreshCalculations();
-});
-$('#trialStatus')?.addEventListener('change', () => {
-  wizard.trialStatus = $('#trialStatus').value;
-  renderModeSummary();
-  loadTemplate(false);
-});
-$('#department')?.addEventListener('change', () => { wizard.department = $('#department').value; loadTemplate(false); renderModeSummary(); refreshCalculations(); });
-$('#clearFormBtn')?.addEventListener('click', clearForm);
-$('#recordForm')?.addEventListener('submit', saveRecord);
-$('#saveAllRecordsBtn')?.addEventListener('click', saveAllRecordsToServer);
-['searchInput', 'filterDepartment', 'filterType'].forEach(id => $('#' + id)?.addEventListener('input', renderRecords));
-$('#materialSearchInput')?.addEventListener('input', renderMaterials);
-$('#printMaterialsBtn')?.addEventListener('click', printMaterialsReport);
-$('#closeDialog')?.addEventListener('click', () => $('#recordDialog').close());
-$('#dialogPdfBtn')?.addEventListener('click', () => openPrintSettings(selectedRecordId));
-$('#exportBtn')?.addEventListener('click', () => { const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `process-control-records-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(link.href); });
-$('#importJsonBtn')?.addEventListener('click', () => { $('#jsonFileInput').value = ''; $('#jsonFileInput').click(); });
-$('#jsonFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) importJsonFile(file); });
-$('#parameterLibraryForm')?.addEventListener('submit', event => { event.preventDefault(); library.push({ id: uid(), name: $('#libraryName').value.trim(), unit: $('#libraryUnit').value.trim(), department: $('#libraryDepartment').value, group: 'Custom' }); saveLibrary(); event.target.reset(); renderLibrary(); renderPicker(); toast('Parameter added'); });
-
-applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
-fetchServerRecords();
-if ($('#recordDate')) $('#recordDate').value = new Date().toISOString().slice(0, 10);
-activeImportMeta = { source: 'manual', baselineMode: '' };
-setClassification({ type: 'operating', department: 'pipe', baselineMode: 'running_with_before', trialStatus: 'completed' });
-loadTemplate(false);
-renderProductionPanel();
-renderDashboard();
-
-window.__processControlTest = { parseExcelWorkbook, calculatePipeOutput, difference, normalizeScope };
-
-let currentPrintRecordId = null;
-let currentVoucherRecordId = null;
-
 function openPrintSettings(id) {
   const record = records.find(item => item.id === id);
   if (!record) return;
   currentPrintRecordId = id;
   currentVoucherRecordId = null;
+  currentMaterialsAuditPrint = false;
 
   const metaItems = recordMeta(record);
   const parameters = record.parameters || [];
@@ -1632,6 +1638,7 @@ function openVoucherSettings(id) {
   if (!record) return;
   currentVoucherRecordId = id;
   currentPrintRecordId = null;
+  currentMaterialsAuditPrint = false;
 
   const rawMaterials = (record.parameters || []).filter(p => {
     const grp = normalize(p.group || '');
@@ -1689,36 +1696,6 @@ function openVoucherSettings(id) {
 
   dialog.showModal();
 }
-
-document.addEventListener('click', e => {
-  if (e.target.closest('#closePrintSettings')) {
-    document.querySelector('#printSettingsDialog')?.close();
-  }
-  if (e.target.closest('#cancelPrintBtn')) {
-    document.querySelector('#printSettingsDialog')?.close();
-    if (currentVoucherRecordId) {
-      printHandoverVoucher(currentVoucherRecordId);
-    } else if (currentPrintRecordId) {
-      printRecord(currentPrintRecordId);
-    }
-  }
-});
-
-document.addEventListener('click', e => {
-  const btn = e.target.closest('#confirmPrintBtn');
-  if (btn) {
-    const hideFormulation = document.querySelector('#hideFormulationCb')?.checked || false;
-    const hiddenParams = Array.from(document.querySelectorAll('.hide-param-cb:checked')).map(cb => cb.value);
-    const hiddenMeta = Array.from(document.querySelectorAll('.hide-meta-cb:checked')).map(cb => cb.value);
-    document.querySelector('#printSettingsDialog')?.close();
-    
-    if (currentVoucherRecordId) {
-      printHandoverVoucher(currentVoucherRecordId, { hiddenParams, hiddenMeta });
-    } else if (currentPrintRecordId) {
-      printRecord(currentPrintRecordId, { hideFormulation, hiddenParams, hiddenMeta });
-    }
-  }
-});
 
 function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: [] }) {
   const record = records.find(item => item.id === id);
@@ -1864,3 +1841,90 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
     printWindow.document.documentElement.innerHTML = voucherHtml;
   }
 }
+
+document.addEventListener('click', e => {
+  if (e.target.closest('#closePrintSettings')) {
+    document.querySelector('#printSettingsDialog')?.close();
+  }
+  if (e.target.closest('#cancelPrintBtn')) {
+    document.querySelector('#printSettingsDialog')?.close();
+    if (currentMaterialsAuditPrint) {
+      currentMaterialsAuditPrint = false;
+      printMaterialsReport();
+    } else if (currentVoucherRecordId) {
+      printHandoverVoucher(currentVoucherRecordId);
+    } else if (currentPrintRecordId) {
+      printRecord(currentPrintRecordId);
+    }
+  }
+});
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('#confirmPrintBtn');
+  if (btn) {
+    const hideFormulation = document.querySelector('#hideFormulationCb')?.checked || false;
+    const hiddenParams = Array.from(document.querySelectorAll('.hide-param-cb:checked')).map(cb => cb.value);
+    const hiddenMeta = Array.from(document.querySelectorAll('.hide-meta-cb:checked')).map(cb => cb.value);
+    document.querySelector('#printSettingsDialog')?.close();
+    
+    if (currentMaterialsAuditPrint) {
+      currentMaterialsAuditPrint = false;
+      printMaterialsReport({ hiddenParams, hiddenMeta });
+    } else if (currentVoucherRecordId) {
+      printHandoverVoucher(currentVoucherRecordId, { hiddenParams, hiddenMeta });
+    } else if (currentPrintRecordId) {
+      printRecord(currentPrintRecordId, { hideFormulation, hiddenParams, hiddenMeta });
+    }
+  }
+});
+
+$$('.nav-btn').forEach(button => button.addEventListener('click', () => button.dataset.view === 'new-record' ? openNewRecordWizard() : switchView(button.dataset.view)));
+$$('[data-go]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.go)));
+$('#quickNewBtn')?.addEventListener('click', () => openNewRecordWizard());
+$('#themeToggle')?.addEventListener('click', () => applyTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark'));
+$('#closeWizard')?.addEventListener('click', () => $('#newRecordWizard').close());
+$('#wizardBack')?.addEventListener('click', wizardBack);
+$('#wizardContent')?.addEventListener('click', event => { const choice = event.target.closest('[data-choice]'); if (choice) handleWizardChoice(choice.dataset.choice); });
+$('#addParameterBtn')?.addEventListener('click', () => { addParameter(library.find(parameter => parameter.id === $('#parameterPicker').value)); renderParameterTable(); });
+$('#loadTemplateBtn')?.addEventListener('click', () => loadTemplate(true));
+$('#addCustomBtn')?.addEventListener('click', () => { const name = prompt('Custom parameter name:'); if (!name) return; const unit = prompt('Unit (optional):') || ''; activeParameters.push({ rowId: uid(), libraryId: null, name, unit, group: 'Custom', valueType: 'Comparison', scope: $('#department').value, before: '', after: '', value: '' }); renderParameterTable(); });
+$('#importExcelBtn')?.addEventListener('click', () => { wizard = { step: 'source', type: $('#recordType').value, department: $('#department').value, baselineMode: getBaselineMode() || 'running_with_before', trialStatus: $('#trialStatus')?.value || 'completed' }; $('#excelFileInput').value = ''; $('#excelFileInput').click(); });
+$('#excelFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) readExcelFile(file); });
+$('#closeImportPreview')?.addEventListener('click', () => $('#importPreviewDialog').close());
+$('#cancelImportBtn')?.addEventListener('click', () => { pendingImport = null; $('#importPreviewDialog').close(); });
+$('#confirmImportBtn')?.addEventListener('click', confirmImport);
+$('#recordType')?.addEventListener('change', () => {
+  if ($('#recordType').value === 'trial' && !wizard.baselineMode) wizard.baselineMode = 'running_with_before';
+  activeImportMeta = { ...(activeImportMeta || {}), baselineMode: $('#recordType').value === 'trial' ? wizard.baselineMode : '' };
+  renderModeSummary();
+  refreshCalculations();
+});
+$('#trialStatus')?.addEventListener('change', () => {
+  wizard.trialStatus = $('#trialStatus').value;
+  renderModeSummary();
+  loadTemplate(false);
+});
+$('#department')?.addEventListener('change', () => { wizard.department = $('#department').value; loadTemplate(false); renderModeSummary(); refreshCalculations(); });
+$('#clearFormBtn')?.addEventListener('click', clearForm);
+$('#recordForm')?.addEventListener('submit', saveRecord);
+$('#saveAllRecordsBtn')?.addEventListener('click', saveAllRecordsToServer);
+['searchInput', 'filterDepartment', 'filterType'].forEach(id => $('#' + id)?.addEventListener('input', renderRecords));
+$('#materialSearchInput')?.addEventListener('input', renderMaterials);
+$('#printMaterialsBtn')?.addEventListener('click', openMaterialsPrintSettings);
+$('#closeDialog')?.addEventListener('click', () => $('#recordDialog').close());
+$('#dialogPdfBtn')?.addEventListener('click', () => openPrintSettings(selectedRecordId));
+$('#exportBtn')?.addEventListener('click', () => { const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `process-control-records-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(link.href); });
+$('#importJsonBtn')?.addEventListener('click', () => { $('#jsonFileInput').value = ''; $('#jsonFileInput').click(); });
+$('#jsonFileInput')?.addEventListener('change', event => { const file = event.target.files?.[0]; if (file) importJsonFile(file); });
+$('#parameterLibraryForm')?.addEventListener('submit', event => { event.preventDefault(); library.push({ id: uid(), name: $('#libraryName').value.trim(), unit: $('#libraryUnit').value.trim(), department: $('#libraryDepartment').value, group: 'Custom' }); saveLibrary(); event.target.reset(); renderLibrary(); renderPicker(); toast('Parameter added'); });
+
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+fetchServerRecords();
+if ($('#recordDate')) $('#recordDate').value = new Date().toISOString().slice(0, 10);
+activeImportMeta = { source: 'manual', baselineMode: '' };
+setClassification({ type: 'operating', department: 'pipe', baselineMode: 'running_with_before', trialStatus: 'completed' });
+loadTemplate(false);
+renderProductionPanel();
+renderDashboard();
+
+window.__processControlTest = { parseExcelWorkbook, calculatePipeOutput, difference, normalizeScope };
