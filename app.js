@@ -1043,38 +1043,77 @@ function getDisplayFormulaCode(record) {
   return rawCode;
 }
 
-function renderRecords() {
-  const data = getFilteredRecords();
-  if (!$('#recordsTable')) return;
-  $('#recordsTable').innerHTML = `<div class="data-head"><div>Date</div><div>Type</div><div style="text-align:center;">Review Audit</div><div>Formula Code</div><div>Department</div><div>Purpose</div><div>Actions</div></div>${data.map(record => {
-    let typeBadge = `<span class="badge ${record.type}">${esc(record.type)}</span>`;
-    if (record.type === 'trial' && record.status === 'planned') {
-      typeBadge = `<span class="badge planned">Pending Run</span>`;
-    }
-    const purposeText = record.purpose ? esc(record.purpose) : '<span style="color:var(--muted);">—</span>';
-    const isTrial = record.type === 'trial';
-    const handoverBtn = isTrial ? `<button class="icon-btn handover-record" data-id="${record.id}" title="Print Material Handover Voucher" style="color:#10b981;font-weight:bold;">Voucher</button>` : '';
+function printMaterialsReport(hideOptions = { hiddenParams: [], hiddenMeta: [] }) {
+  const { details, summary } = extractTrialMaterials();
+  const generatedAt = new Date().toLocaleString();
 
-    const revStatus = record.reviewStatus || 'pending';
-    const statusColor = revStatus === 'verified' ? '#10b981' : (revStatus === 'flagged' ? '#ef4444' : '#f59e0b');
-    const statusTitle = revStatus === 'verified' ? 'Verified (Green)' : (revStatus === 'flagged' ? 'Needs Fix / Duplicate (Red)' : 'Pending Review (Yellow)');
+  const filteredSummary = summary.filter(s => !hideOptions.hiddenParams.includes(s.name));
+  const filteredDetails = details.filter(d => !hideOptions.hiddenParams.includes(d.material));
 
-    const auditBadge = `<button class="review-toggle-btn" data-id="${record.id}" title="Click to toggle status: ${statusTitle}" style="background:transparent;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:12px;border:1px solid ${statusColor}44;background:${statusColor}15;">
-      <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${statusColor};box-shadow:0 0 6px ${statusColor};"></span>
-      <small style="color:${statusColor};font-weight:bold;font-size:10.5px;text-transform:capitalize;">${revStatus}</small>
-    </button>`;
+  let totalKg = filteredSummary.reduce((sum, item) => sum + item.totalQty, 0);
 
-    const displayFormula = getDisplayFormulaCode(record);
+  const showCards = !hideOptions.hiddenMeta.includes('Summary Cards');
+  const showSummaryTable = !hideOptions.hiddenMeta.includes('Consolidated Material Summary Table');
+  const showDetailedTable = !hideOptions.hiddenMeta.includes('Detailed Consumption Log Table');
 
-    return `<div class="data-row"><div>${esc(record.date)}</div><div>${typeBadge}</div><div style="text-align:center;">${auditBadge}</div><div title="${esc(displayFormula)}" style="font-weight:bold; color:var(--accent);">${esc(displayFormula)}</div><div><span class="badge ${record.department}">${esc(record.department)}</span></div><div title="${esc(record.purpose || '')}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${purposeText}</div><div class="row-actions"><button class="icon-btn view-record" data-id="${record.id}">View</button><button class="icon-btn edit-record" data-id="${record.id}" style="color:var(--accent);font-weight:bold;">Edit</button><button class="icon-btn pdf-record" data-id="${record.id}">PDF</button>${handoverBtn}<button class="icon-btn delete delete-record" data-id="${record.id}">x</button></div></div>`;
-  }).join('') || '<div class="empty">No matching records.</div>'}`;
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Trial Raw Materials Consumption Report</title><style>
+    @page { size: A4 portrait; margin: 8mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: Arial, sans-serif; color: #142330; font-size: 9.5px; line-height: 1.25; margin: 0; padding: 10px; }
+    .no-print { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+    .print-btn { background: #109f83; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    @media print { .no-print { display: none !important; } body { padding: 0; } }
+    header { border-bottom: 2.5px solid #109f83; padding-bottom: 4px; margin-bottom: 8px; }
+    h1 { font-size: 18px; margin: 0 0 3px; color: #109f83; }
+    h2 { font-size: 11px; color: #467083; margin: 0; }
+    .summary-grid { display: ${showCards ? 'grid' : 'none'}; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
+    .summary-card { border: 1px solid #ccd9df; border-radius: 4px; padding: 6px 8px; background: #fafcfc; }
+    .summary-card span { display: block; color: #6b8290; font-size: 7.5px; text-transform: uppercase; margin-bottom: 2px; }
+    .summary-card strong { font-size: 11px; color: #142330; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
+    th, td { border: 1px solid #bdcdd5; padding: 4px 6px; text-align: left; vertical-align: middle; }
+    th { background: #eaf3f5; font-size: 9px; font-weight: 700; color: #214352; }
+    td { font-size: 8.5px; }
+    .footer { margin-top: 8px; color: #738894; font-size: 7.5px; text-align: right; }
+  </style></head><body>
+    <div class="no-print">
+      <button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button>
+    </div>
+    <header><h1>Trial Raw Materials Consumption Audit</h1><h2>Non-Inventory Trial Raw Materials Record</h2></header>
+    <div class="summary-grid">
+      <div class="summary-card"><span>Total Raw Materials</span><strong>${totalKg.toFixed(2)} kg</strong></div>
+      <div class="summary-card"><span>Materials Types</span><strong>${filteredSummary.length} items</strong></div>
+      <div class="summary-card"><span>Logged Entries</span><strong>${filteredDetails.length} logs</strong></div>
+      <div class="summary-card"><span>Audit Status</span><strong>Verified</strong></div>
+    </div>
 
-  $$('.review-toggle-btn').forEach(btn => btn.addEventListener('click', () => toggleRecordReview(btn.dataset.id)));
-  $$('.view-record').forEach(button => button.addEventListener('click', () => openRecord(button.dataset.id)));
-  $$('.edit-record').forEach(button => button.addEventListener('click', () => editRecord(button.dataset.id)));
-  $$('.pdf-record').forEach(button => button.addEventListener('click', () => openPrintSettings(button.dataset.id)));
-  $$('.handover-record').forEach(button => button.addEventListener('click', () => openVoucherSettings(button.dataset.id)));
-  $$('.delete-record').forEach(button => button.addEventListener('click', () => { if (confirm('Delete this record?')) { records = records.filter(record => record.id !== button.dataset.id); save(); renderRecords(); renderDashboard(); renderMaterials(); } }));
+    ${showSummaryTable ? `
+      <h3 style="margin:8px 0 3px;font-size:11px;color:#214352;">Consolidated Material Summary</h3>
+      <table><thead><tr><th style="width:40px;">#</th><th>Raw Material</th><th style="width:100px;">Trials Count</th><th style="width:130px;">Total Consumed</th></tr></thead><tbody>
+        ${filteredSummary.map((item, idx) => `<tr><td>${idx + 1}</td><td><strong>${esc(item.name)}</strong></td><td>${item.count}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;">No items</td></tr>'}
+      </tbody></table>
+    ` : ''}
+
+    ${showDetailedTable ? `
+      <h3 style="margin:12px 0 3px;font-size:11px;color:#214352;">Detailed Consumption Log</h3>
+      <table><thead><tr><th style="width:30px;">#</th><th style="width:75px;">Date</th><th style="width:75px;">Trial No</th><th style="width:75px;">Status</th><th>Product</th><th>Material</th><th style="width:65px;">Qty/Batch</th><th style="width:50px;">Batches</th><th style="width:75px;">Total Qty</th></tr></thead><tbody>
+        ${filteredDetails.map((item, idx) => `<tr><td>${idx + 1}</td><td>${esc(item.date)}</td><td>${esc(item.trialNo)}</td><td>${esc(item.status)}</td><td>${esc(item.product)}</td><td>${esc(item.material)}</td><td>${item.unitQty} ${esc(item.unit)}</td><td>${item.batches}</td><td><strong>${item.totalQty.toFixed(2)} ${esc(item.unit)}</strong></td></tr>`).join('') || '<tr><td colspan="9" style="text-align:center;">No items</td></tr>'}
+      </tbody></table>
+    ` : ''}
+
+    <div class="footer">Generated ${esc(generatedAt)}</div>
+    <script>
+      window.onload = function() {
+        setTimeout(function() { window.print(); }, 300);
+      };
+    <\/script>
+  </body></html>`;
+
+  const reportWindow = window.open('', '_blank', 'width=1100,height=800');
+  if (!reportWindow) { toast('Allow pop-ups to print the report.'); return; }
+  reportWindow.document.open();
+  reportWindow.document.write(doc);
+  reportWindow.document.close();
 }
 
 function isFormulaMaterial(group = '', name = '') {
