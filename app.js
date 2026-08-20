@@ -1772,8 +1772,6 @@ function printHandoverVoucher(id, hideOptions = { hiddenParams: [], hiddenMeta: 
 
   const printWindow = window.open('', '_blank');
   if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(voucherHtml);
-    printWindow.document.close();
+    printWindow.document.documentElement.innerHTML = voucherHtml;
   }
 }
